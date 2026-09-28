@@ -1,0 +1,2962 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cocofolia 場景建置器</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    height: 100vh;
+    display: flex;
+    font-family: Arial, "Microsoft JhengHei", sans-serif;
+    background: #222;
+    color: #eee;
+    overflow: hidden;
+}
+
+/* 左側工具欄 */
+#sidebar {
+    width: 300px;
+    background: #2d2d2d;
+    border-right: 1px solid #444;
+    padding: 15px;
+    overflow-y: auto;
+}
+
+h2 {
+    margin: 0 0 15px;
+    font-size: 20px;
+}
+
+h3 {
+    margin: 18px 0 8px;
+    font-size: 14px;
+    color: #aaa;
+}
+
+button,
+input {
+    font-family: inherit;
+}
+
+button {
+    background: #444;
+    color: white;
+    border: 1px solid #666;
+    border-radius: 5px;
+    padding: 7px 10px;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #555;
+}
+
+button:active {
+    background: #666;
+}
+
+.full {
+    width: 100%;
+}
+
+.row {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 6px;
+}
+
+.row button {
+    flex: 1;
+}
+
+.control {
+    margin-bottom: 8px;
+}
+
+.control label {
+    display: block;
+    font-size: 12px;
+    color: #aaa;
+    margin-bottom: 3px;
+}
+
+.control input {
+    width: 100%;
+    background: #1f1f1f;
+    color: white;
+    border: 1px solid #555;
+    border-radius: 4px;
+    padding: 6px;
+}
+
+.control input[type="range"] {
+    padding: 0;
+}
+
+#objectList {
+    border: 1px solid #444;
+    background: #222;
+    max-height: 180px;
+    overflow-y: auto;
+}
+
+.object-item {
+    padding: 8px;
+    border-bottom: 1px solid #444;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.object-item:hover {
+    background: #333;
+}
+
+.object-item.selected {
+    background: #555;
+}
+
+#opacityValue {
+    font-size: 12px;
+    color: #aaa;
+}
+
+.control select {
+    width: 100%;
+    background: #1f1f1f;
+    color: white;
+    border: 1px solid #555;
+    border-radius: 4px;
+    padding: 6px;
+}
+
+/* =========================================================
+   工作區
+========================================================= */
+
+#workspace {
+    flex: 1;
+    position: relative;
+
+    /* 工作區本身不能被 1920×1080 畫布撐開 */
+    overflow: hidden;
+
+    background:
+        linear-gradient(45deg, #292929 25%, transparent 25%),
+        linear-gradient(-45deg, #292929 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #292929 75%),
+        linear-gradient(-45deg, transparent 75%, #292929 75%);
+
+    background-size: 30px 30px;
+    background-position:
+        0 0,
+        0 15px,
+        15px -15px,
+        -15px 0;
+}
+
+#viewportControls {
+    position: absolute;
+
+    right: 16px;
+    bottom: 16px;
+
+    z-index: 1000;
+
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    padding: 7px;
+
+    background: rgba(30, 30, 30, 0.92);
+
+    border: 1px solid #555;
+    border-radius: 8px;
+
+    box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+}
+
+#viewportControls button {
+    height: 30px;
+    min-width: 30px;
+
+    padding: 0 8px;
+
+    background: #3a3a3a;
+    color: #eee;
+
+    border: 1px solid #666;
+    border-radius: 5px;
+
+    cursor: pointer;
+}
+
+#viewportControls button:hover {
+    background: #4a4a4a;
+}
+
+#zoomValue {
+    min-width: 50px;
+
+    text-align: center;
+
+    font-size: 12px;
+    color: #ddd;
+}
+
+/* =========================================================
+   固定 1920 × 1080 場景畫布
+========================================================= */
+
+#scene {
+    position: absolute;
+
+    width: 1920px;
+    height: 1080px;
+
+    left: 50%;
+    top: 50%;
+
+    margin-left: -960px;
+    margin-top: -540px;
+
+    background: #111;
+    overflow: hidden;
+
+    transform-origin: center center;
+
+    box-shadow: 0 0 20px #000;
+}
+
+#sceneGrid {
+    position: absolute;
+    inset: 0;
+    z-index: 100;
+    pointer-events: none;
+
+    background-image:
+        linear-gradient(
+            rgba(255,255,255,0.12) 1px,
+            transparent 1px
+        ),
+        linear-gradient(
+            90deg,
+            rgba(255,255,255,0.12) 1px,
+            transparent 1px
+        );
+
+    background-size: 24px 24px;
+}
+
+/* =========================================================
+   背景
+========================================================= */
+
+#background {
+    position: absolute;
+
+    left: 0;
+    top: 0;
+
+    width: 1920px;
+    height: 1080px;
+
+    object-fit: fill;
+
+    pointer-events: none;
+
+    z-index: 0;
+}
+
+
+/* =========================================================
+   一般圖片物件
+========================================================= */
+
+#objects {
+    position: absolute;
+
+    left: 0;
+    top: 0;
+
+    width: 1920px;
+    height: 1080px;
+
+    z-index: 10;
+
+    pointer-events: none;
+}
+
+.scene-object {
+    pointer-events: auto;
+}
+
+
+/* =========================================================
+   前景
+========================================================= */
+
+#foreground {
+    position: absolute;
+
+    left: 0;
+    top: 0;
+
+    width: 1920px;
+    height: 1080px;
+
+    object-fit: fill;
+
+    pointer-events: none;
+
+    z-index: 90;
+}
+
+
+/* =========================================================
+   24 × 24 px 格線
+========================================================= */
+
+#sceneGrid {
+    position: absolute;
+
+    left: 0;
+    top: 0;
+
+    width: 1920px;
+    height: 1080px;
+
+    pointer-events: none;
+
+    z-index: 100;
+
+    background-image:
+        linear-gradient(
+            rgba(255,255,255,0.12) 1px,
+            transparent 1px
+        ),
+        linear-gradient(
+            90deg,
+            rgba(255,255,255,0.12) 1px,
+            transparent 1px
+        );
+
+    background-size: 24px 24px;
+}
+
+/* 圖片物件 */
+.scene-object {
+    position: absolute;
+    transform-origin: center center;
+    user-select: none;
+    cursor: move;
+}
+
+.scene-object.selected {
+    outline: 2px solid #4da6ff;
+}
+
+#dropHint {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    color: #777;
+    pointer-events: none;
+    text-align: center;
+}
+</style>
+</head>
+
+<body>
+
+<!-- =========================
+     左側控制面板
+========================= -->
+<div id="sidebar">
+
+    <h2>Cocofolia 場景建置器</h2>
+
+    <h3>圖片</h3>
+
+    <input
+        type="file"
+        id="imageInput"
+        accept="image/*"
+        multiple
+        class="full"
+    >
+
+    <div class="row" style="margin-top:8px;">
+        <button id="addBackground">設為背景</button>
+        <button id="addForeground">設為前景</button>
+    </div>
+
+    <h3>物件列表</h3>
+
+    <div id="objectList"></div>
+
+    <h3>選取物件</h3>
+
+    <div id="noSelection">
+        尚未選取物件
+    </div>
+
+    <div id="editor" style="display:none;">
+
+        <div class="control">
+            <label>名稱</label>
+            <input id="nameInput" type="text">
+        </div>
+
+        <div class="control">
+            <label>X</label>
+            <input id="xInput" type="number">
+        </div>
+
+        <div class="control">
+            <label>Y</label>
+            <input id="yInput" type="number">
+        </div>
+
+        <div class="control">
+            <label>寬度</label>
+            <input id="widthInput" type="number">
+        </div>
+
+        <div class="control">
+            <label>高度</label>
+            <input id="heightInput" type="number">
+        </div>
+
+        <div class="control">
+            <label>旋轉角度</label>
+            <input id="angleInput" type="number">
+        </div>
+
+        <div class="control">
+            <label>
+                透明度：
+                <span id="opacityValue">100%</span>
+            </label>
+
+            <input
+                id="opacityInput"
+                type="range"
+                min="0"
+                max="100"
+                value="100"
+            >
+        </div>
+
+        <div class="row">
+            <button id="flipX">水平鏡像</button>
+            <button id="flipY">垂直鏡像</button>
+        </div>
+
+        <div class="row">
+            <button id="moveUp">圖層 ↑</button>
+            <button id="moveDown">圖層 ↓</button>
+        </div>
+
+        <div class="row">
+            <button id="duplicate">複製物件</button>
+            <button id="delete">刪除物件</button>
+        </div>
+
+    </div>
+
+    <h3>背景 / 前景</h3>
+
+<div class="control">
+    <label>背景儲存位置</label>
+
+    <select id="backgroundStorage">
+        <option value="room">Room</option>
+        <option value="scene">Scene</option>
+    </select>
+</div>
+
+<div class="control">
+    <label>前景儲存位置</label>
+
+    <select id="foregroundStorage">
+        <option value="room">Room</option>
+        <option value="scene">Scene</option>
+    </select>
+</div>
+
+<div class="row">
+    <button id="clearBackground">清除背景</button>
+    <button id="clearForeground">清除前景</button>
+</div>
+
+    <h3>輸出</h3>
+
+<div class="row">
+    <button id="exportZIP">下載 Room ZIP</button>
+    <button id="exportPNG">輸出 PNG</button>
+</div>
+
+<div
+    id="zipStatus"
+    style="
+        margin-top:8px;
+        padding:8px;
+        border:1px solid #444;
+        border-radius:5px;
+        background:#1f1f1f;
+        color:#aaa;
+        font-size:12px;
+        white-space:pre-wrap;
+        word-break:break-all;
+    "
+>
+    尚未建立 Room ZIP。
+</div>
+
+</div>
+
+
+<!-- =========================
+     工作區
+========================= -->
+<div id="workspace">
+
+    <div id="viewportControls">
+
+        <button id="zoomOut">−</button>
+
+        <span id="zoomValue">100%</span>
+
+        <button id="zoomIn">＋</button>
+
+        <button id="fitCanvas">適合畫布</button>
+
+        <button id="resetView">100%</button>
+
+    </div>
+
+    <div id="scene">
+
+    <div id="dropHint">
+        請匯入圖片
+    </div>
+
+    <!-- 背景 -->
+    <img id="background">
+
+    <!-- 一般圖片物件 -->
+    <div id="objects"></div>
+
+    <!-- 前景 -->
+    <img id="foreground">
+
+    <!-- 24 × 24 px 格線 -->
+    <div id="sceneGrid"></div>
+
+</div>
+
+</div>
+
+
+<script>
+
+/* ==========================================
+   資料
+========================================== */
+
+const objects = [];
+
+let selectedId = null;
+
+let backgroundData = null;
+let foregroundData = null;
+
+let zCounter = 1;
+
+
+/* ==========================================
+   DOM
+========================================== */
+
+const imageInput = document.getElementById("imageInput");
+
+const objectList = document.getElementById("objectList");
+
+const objectsContainer = document.getElementById("objects");
+
+const background = document.getElementById("background");
+
+const foreground = document.getElementById("foreground");
+
+const dropHint = document.getElementById("dropHint");
+
+const editor = document.getElementById("editor");
+
+const noSelection = document.getElementById("noSelection");
+
+
+/* ==========================================
+   工具
+========================================== */
+
+function createId() {
+
+    return Math.random()
+        .toString(16)
+        .slice(2) +
+        Date.now().toString(16);
+
+}
+
+
+function getSelectedObject() {
+
+    return objects.find(o => o.id === selectedId);
+
+}
+
+
+/* ==========================================
+   圖片匯入
+========================================== */
+
+imageInput.addEventListener("change", function(e) {
+
+    const files = [...e.target.files];
+
+    if (files.length === 0) {
+        return;
+    }
+
+    /*
+     * 記住最後一次選擇的圖片
+     * 背景 / 前景按鈕會使用這張圖片
+     */
+    lastImportedImage = files[files.length - 1];
+
+    files.forEach(file => {
+
+        const reader = new FileReader();
+
+        reader.onload = function(event) {
+
+            const img = new Image();
+
+            img.onload = function() {
+
+                const object = {
+
+                    id: createId(),
+
+                    name: file.name,
+
+                    imageUrl: event.target.result,
+
+                    x: 100,
+
+                    y: 100,
+
+                    z: zCounter++,
+
+                    angle: 0,
+
+                    width: img.naturalWidth,
+
+                    height: img.naturalHeight,
+
+                    opacity: 1,
+
+                    flipX: false,
+
+                    flipY: false
+
+                };
+
+                objects.push(object);
+
+                render();
+
+                selectObject(object.id);
+
+            };
+
+            img.src = event.target.result;
+
+        };
+
+        reader.readAsDataURL(file);
+
+    });
+
+    /*
+     * 不要在這裡清空 input。
+     *
+     * 否則背景 / 前景按鈕會拿不到檔案。
+     */
+
+});
+
+
+/* ==========================================
+   Render
+========================================== */
+
+function render() {
+
+    objectsContainer.innerHTML = "";
+
+    objects.forEach(object => {
+
+        const img = document.createElement("img");
+
+        img.className = "scene-object";
+
+        img.src = object.imageUrl;
+
+        img.dataset.id = object.id;
+
+        img.style.left = object.x + "px";
+
+        img.style.top = object.y + "px";
+
+        img.style.width = object.width + "px";
+
+        img.style.height = object.height + "px";
+
+        img.style.zIndex = object.z;
+
+        img.style.opacity = object.opacity;
+
+        img.style.transform =
+            "rotate(" + object.angle + "deg) " +
+            "scale(" +
+            (object.flipX ? -1 : 1) +
+            "," +
+            (object.flipY ? -1 : 1) +
+            ")";
+
+        img.addEventListener("mousedown", startDrag);
+
+        img.addEventListener("click", function(e) {
+
+            e.stopPropagation();
+
+            selectObject(object.id);
+
+        });
+
+        objectsContainer.appendChild(img);
+
+    });
+
+    updateList();
+
+    updateSelectionVisual();
+
+    updateDropHint();
+
+}
+
+
+/* ==========================================
+   物件列表
+========================================== */
+
+function updateList() {
+
+    objectList.innerHTML = "";
+
+    const sorted = [...objects].sort((a,b) => b.z - a.z);
+
+    sorted.forEach(object => {
+
+        const div = document.createElement("div");
+
+        div.className = "object-item";
+
+        if (object.id === selectedId) {
+
+            div.classList.add("selected");
+
+        }
+
+        div.textContent =
+            object.name +
+            "  [Z:" +
+            object.z +
+            "]";
+
+        div.addEventListener("click", function() {
+
+            selectObject(object.id);
+
+        });
+
+        objectList.appendChild(div);
+
+    });
+
+}
+
+
+function updateSelectionVisual() {
+
+    document.querySelectorAll(".scene-object")
+        .forEach(el => {
+
+            el.classList.toggle(
+                "selected",
+                el.dataset.id === selectedId
+            );
+
+        });
+
+}
+
+
+/* ==========================================
+   選取
+========================================== */
+
+function selectObject(id) {
+
+    selectedId = id;
+
+    const object = getSelectedObject();
+
+    if (!object) {
+
+        editor.style.display = "none";
+
+        noSelection.style.display = "block";
+
+        return;
+
+    }
+
+    editor.style.display = "block";
+
+    noSelection.style.display = "none";
+
+    document.getElementById("nameInput").value =
+        object.name;
+
+    document.getElementById("xInput").value =
+        Math.round(object.x);
+
+    document.getElementById("yInput").value =
+        Math.round(object.y);
+
+    document.getElementById("widthInput").value =
+        Math.round(object.width);
+
+    document.getElementById("heightInput").value =
+        Math.round(object.height);
+
+    document.getElementById("angleInput").value =
+        object.angle;
+
+    document.getElementById("opacityInput").value =
+        object.opacity * 100;
+
+    document.getElementById("opacityValue").textContent =
+        Math.round(object.opacity * 100) + "%";
+
+    updateSelectionVisual();
+
+    updateList();
+
+}
+
+
+/* ==========================================
+   編輯欄位
+========================================== */
+
+document.getElementById("nameInput")
+.addEventListener("input", function() {
+
+    const object = getSelectedObject();
+
+    if (!object) return;
+
+    object.name = this.value;
+
+    render();
+
+});
+
+
+document.getElementById("xInput")
+.addEventListener("input", function() {
+
+    const object = getSelectedObject();
+
+    if (!object) return;
+
+    object.x = Number(this.value) || 0;
+
+    render();
+
+});
+
+
+document.getElementById("yInput")
+.addEventListener("input", function() {
+
+    const object = getSelectedObject();
+
+    if (!object) return;
+
+    object.y = Number(this.value) || 0;
+
+    render();
+
+});
+
+
+document.getElementById("widthInput")
+.addEventListener("input", function() {
+
+    const object = getSelectedObject();
+
+    if (!object) return;
+
+    object.width =
+        Math.max(1, Number(this.value) || 1);
+
+    render();
+
+});
+
+
+document.getElementById("heightInput")
+.addEventListener("input", function() {
+
+    const object = getSelectedObject();
+
+    if (!object) return;
+
+    object.height =
+        Math.max(1, Number(this.value) || 1);
+
+    render();
+
+});
+
+
+document.getElementById("angleInput")
+.addEventListener("input", function() {
+
+    const object = getSelectedObject();
+
+    if (!object) return;
+
+    object.angle =
+        Number(this.value) || 0;
+
+    render();
+
+});
+
+
+document.getElementById("opacityInput")
+.addEventListener("input", function() {
+
+    const object = getSelectedObject();
+
+    if (!object) return;
+
+    object.opacity =
+        Number(this.value) / 100;
+
+    document.getElementById("opacityValue")
+        .textContent =
+        this.value + "%";
+
+    render();
+
+});
+
+
+/* ==========================================
+   鏡像
+========================================== */
+
+document.getElementById("flipX")
+.addEventListener("click", function() {
+
+    const object = getSelectedObject();
+
+    if (!object) return;
+
+    object.flipX = !object.flipX;
+
+    render();
+
+});
+
+
+document.getElementById("flipY")
+.addEventListener("click", function() {
+
+    const object = getSelectedObject();
+
+    if (!object) return;
+
+    object.flipY = !object.flipY;
+
+    render();
+
+});
+
+
+/* ==========================================
+   圖層
+========================================== */
+
+document.getElementById("moveUp")
+.addEventListener("click", function() {
+
+    const object = getSelectedObject();
+
+    if (!object) return;
+
+    object.z = ++zCounter;
+
+    render();
+
+});
+
+
+document.getElementById("moveDown")
+.addEventListener("click", function() {
+
+    const object = getSelectedObject();
+
+    if (!object) return;
+
+    object.z = Math.max(
+        1,
+        Math.min(
+            ...objects
+                .filter(o => o.id !== object.id)
+                .map(o => o.z),
+            object.z
+        ) - 1
+    );
+
+    render();
+
+});
+
+
+/* ==========================================
+   複製
+========================================== */
+
+document.getElementById("duplicate")
+.addEventListener("click", function() {
+
+    const object = getSelectedObject();
+
+    if (!object) return;
+
+    const copy = {
+
+        ...object,
+
+        id: createId(),
+
+        name: object.name + " 副本",
+
+        x: object.x + 20,
+
+        y: object.y + 20,
+
+        z: ++zCounter
+
+    };
+
+    objects.push(copy);
+
+    render();
+
+    selectObject(copy.id);
+
+});
+
+
+/* ==========================================
+   刪除
+========================================== */
+
+document.getElementById("delete")
+.addEventListener("click", function() {
+
+    if (!selectedId) return;
+
+    const index =
+        objects.findIndex(o => o.id === selectedId);
+
+    if (index !== -1) {
+
+        objects.splice(index, 1);
+
+    }
+
+    selectedId = null;
+
+    render();
+
+});
+
+
+/* ==========================================
+   拖曳
+========================================== */
+
+let dragging = false;
+
+let dragObject = null;
+
+let dragStartX = 0;
+
+let dragStartY = 0;
+
+let objectStartX = 0;
+
+let objectStartY = 0;
+
+
+function startDrag(e) {
+
+    /*
+     * 防止同時啟動 Scene 平移
+     */
+    e.stopPropagation();
+
+    const id =
+        e.currentTarget.dataset.id;
+
+    selectObject(id);
+
+    const object =
+        getSelectedObject();
+
+    if (!object) return;
+
+    dragging = true;
+
+    dragObject = object;
+
+    dragStartX = e.clientX;
+
+    dragStartY = e.clientY;
+
+    objectStartX = object.x;
+
+    objectStartY = object.y;
+
+    e.preventDefault();
+
+}
+
+
+document.addEventListener("mousemove", function(e) {
+
+    if (!dragging || !dragObject) return;
+
+    const dx =
+    (e.clientX - dragStartX) /
+    viewScale;
+
+const dy =
+    (e.clientY - dragStartY) /
+    viewScale;
+
+dragObject.x =
+    objectStartX + dx;
+
+dragObject.y =
+    objectStartY + dy;
+
+    render();
+
+});
+
+
+document.addEventListener("mouseup", function() {
+
+    dragging = false;
+
+    dragObject = null;
+
+});
+
+
+/* ==========================================
+   點空白處取消選取
+========================================== */
+
+document.getElementById("scene")
+.addEventListener("click", function(e) {
+
+    if (
+        e.target === this ||
+        e.target === background ||
+        e.target === foreground
+    ) {
+
+        selectedId = null;
+
+        editor.style.display = "none";
+
+        noSelection.style.display = "block";
+
+        updateSelectionVisual();
+
+        updateList();
+
+    }
+
+});
+
+
+/* ==========================================
+   背景
+========================================== */
+
+let lastImportedImage = null;
+
+
+document.getElementById("addBackground").onclick = function() {
+
+    if (!lastImportedImage) {
+
+        alert("請先選擇一張圖片");
+
+        return;
+
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = function(e) {
+
+        backgroundData = e.target.result;
+
+        background.src = backgroundData;
+
+        updateDropHint();
+
+    };
+
+    reader.readAsDataURL(lastImportedImage);
+
+};
+
+
+document.getElementById("addForeground").onclick = function() {
+
+    if (!lastImportedImage) {
+
+        alert("請先選擇一張圖片");
+
+        return;
+
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = function(e) {
+
+        foregroundData = e.target.result;
+
+        foreground.src = foregroundData;
+
+        updateDropHint();
+
+    };
+
+    reader.readAsDataURL(lastImportedImage);
+
+};
+
+
+document.getElementById("clearBackground")
+.onclick = function() {
+
+    backgroundData = null;
+
+    background.removeAttribute("src");
+
+};
+
+
+document.getElementById("clearForeground")
+.onclick = function() {
+
+    foregroundData = null;
+
+    foreground.removeAttribute("src");
+
+};
+
+
+/* ==========================================
+   提示文字
+========================================== */
+
+function updateDropHint() {
+
+    dropHint.style.display =
+        (
+            objects.length === 0 &&
+            !backgroundData &&
+            !foregroundData
+        )
+        ? "block"
+        : "none";
+
+}
+
+
+/* =========================================================
+   CCFOLIA ROOM ZIP
+========================================================= */
+
+
+/*
+  =========================================================
+  SHA-256
+  =========================================================
+*/
+
+async function sha256Hex(bytes){
+
+    const hashBuffer =
+        await crypto.subtle.digest(
+            "SHA-256",
+            bytes
+        );
+
+    const hashBytes =
+        new Uint8Array(hashBuffer);
+
+    return Array.from(hashBytes)
+        .map(
+            b =>
+                b.toString(16)
+                 .padStart(2, "0")
+        )
+        .join("");
+}
+
+
+/*
+  =========================================================
+  Data URL → Uint8Array
+  =========================================================
+*/
+
+function dataURLToBytes(dataURL){
+
+    if(!dataURL){
+        return null;
+    }
+
+    const parts =
+        dataURL.split(",");
+
+    if(parts.length !== 2){
+        throw new Error(
+            "無法解析圖片 Data URL。"
+        );
+    }
+
+    const base64 =
+        parts[1];
+
+    const binary =
+        atob(base64);
+
+    const bytes =
+        new Uint8Array(
+            binary.length
+        );
+
+    for(
+        let i = 0;
+        i < binary.length;
+        i++
+    ){
+
+        bytes[i] =
+            binary.charCodeAt(i);
+
+    }
+
+    return bytes;
+}
+
+
+/*
+  =========================================================
+  取得 Data URL MIME
+  =========================================================
+*/
+
+function getDataURLMime(dataURL){
+
+    if(!dataURL){
+        return "image/png";
+    }
+
+    const match =
+        dataURL.match(
+            /^data:([^;,]+)/
+        );
+
+    return match
+        ? match[1]
+        : "image/png";
+}
+
+
+/*
+  =========================================================
+  MIME → 副檔名
+  =========================================================
+*/
+
+function getImageExtension(mime){
+
+    switch(mime){
+
+        case "image/jpeg":
+            return ".jpg";
+
+        case "image/webp":
+            return ".webp";
+
+        case "image/gif":
+            return ".gif";
+
+        case "image/svg+xml":
+            return ".svg";
+
+        case "image/png":
+        default:
+            return ".png";
+
+    }
+
+}
+
+
+/*
+  =========================================================
+  Uint8Array 合併
+  =========================================================
+*/
+
+function concatBytes(...arrays){
+
+    let total = 0;
+
+    arrays.forEach(
+        array => {
+            total += array.length;
+        }
+    );
+
+    const result =
+        new Uint8Array(total);
+
+    let offset = 0;
+
+    arrays.forEach(
+        array => {
+
+            result.set(
+                array,
+                offset
+            );
+
+            offset +=
+                array.length;
+
+        }
+    );
+
+    return result;
+}
+
+
+/*
+  =========================================================
+  CRC-32
+  =========================================================
+*/
+
+function crc32(bytes){
+
+    let crc =
+        0xffffffff;
+
+    for(
+        let i = 0;
+        i < bytes.length;
+        i++
+    ){
+
+        crc ^= bytes[i];
+
+        for(
+            let j = 0;
+            j < 8;
+            j++
+        ){
+
+            crc =
+                (crc >>> 1) ^
+                (
+                    0xedb88320 &
+                    -(crc & 1)
+                );
+
+        }
+
+    }
+
+    return (
+        crc ^ 0xffffffff
+    ) >>> 0;
+}
+
+
+/*
+  =========================================================
+  Little Endian 16-bit
+  =========================================================
+*/
+
+function u16(n){
+
+    return new Uint8Array([
+
+        n & 0xff,
+
+        (n >>> 8) & 0xff
+
+    ]);
+
+}
+
+
+/*
+  =========================================================
+  Little Endian 32-bit
+  =========================================================
+*/
+
+function u32(n){
+
+    return new Uint8Array([
+
+        n & 0xff,
+
+        (n >>> 8) & 0xff,
+
+        (n >>> 16) & 0xff,
+
+        (n >>> 24) & 0xff
+
+    ]);
+
+}
+
+
+/*
+  =========================================================
+  建立 Store ZIP
+  =========================================================
+
+  ZIP 結構：
+
+      __data.json
+      .token
+      <sha256>.png
+      <sha256>.png
+      ...
+
+  與角色製作器使用同一種 ZIP 結構。
+*/
+
+function createStoredZip(entries){
+
+    const encoder =
+        new TextEncoder();
+
+    const localParts = [];
+
+    const centralParts = [];
+
+    let offset = 0;
+
+
+    for(
+        const entry of entries
+    ){
+
+        const nameBytes =
+            encoder.encode(
+                entry.name
+            );
+
+        const data =
+            entry.data instanceof Uint8Array
+                ? entry.data
+                : new Uint8Array(
+                    entry.data
+                );
+
+
+        const crc =
+            crc32(data);
+
+
+        /*
+          Local File Header
+        */
+
+        const localHeader =
+            concatBytes(
+
+                u32(0x04034b50),
+
+                u16(20),
+
+                u16(0x0800),
+
+                u16(0),
+
+                u16(0),
+
+                u16(0),
+
+                u32(crc),
+
+                u32(data.length),
+
+                u32(data.length),
+
+                u16(nameBytes.length),
+
+                u16(0),
+
+                nameBytes
+
+            );
+
+
+        localParts.push(
+            localHeader,
+            data
+        );
+
+
+        /*
+          Central Directory Header
+        */
+
+        const centralHeader =
+            concatBytes(
+
+                u32(0x02014b50),
+
+                u16(20),
+
+                u16(20),
+
+                u16(0x0800),
+
+                u16(0),
+
+                u16(0),
+
+                u16(0),
+
+                u32(crc),
+
+                u32(data.length),
+
+                u32(data.length),
+
+                u16(nameBytes.length),
+
+                u16(0),
+
+                u16(0),
+
+                u16(0),
+
+                u16(0),
+
+                u32(0),
+
+                u32(offset),
+
+                nameBytes
+
+            );
+
+
+        centralParts.push(
+            centralHeader
+        );
+
+
+        offset +=
+            localHeader.length +
+            data.length;
+
+    }
+
+
+    const localData =
+        concatBytes(
+            ...localParts
+        );
+
+    const centralData =
+        concatBytes(
+            ...centralParts
+        );
+
+
+    /*
+      End Of Central Directory
+    */
+
+    const endRecord =
+        concatBytes(
+
+            u32(0x06054b50),
+
+            u16(0),
+
+            u16(0),
+
+            u16(entries.length),
+
+            u16(entries.length),
+
+            u32(centralData.length),
+
+            u32(localData.length),
+
+            u16(0)
+
+        );
+
+
+    return concatBytes(
+
+        localData,
+
+        centralData,
+
+        endRecord
+
+    );
+
+}
+
+
+/* =========================================================
+   建立 CCFOLIA Room JSON
+   ========================================================= */
+
+async function buildSceneRoom(){
+
+    const resources = {};
+    const imageFiles = new Map();
+    
+    const backgroundStorage =
+    document.getElementById("backgroundStorage").value;
+
+const foregroundStorage =
+    document.getElementById("foregroundStorage").value;
+
+
+    /* ---------------------------------------------------------
+       Data URL → CCFOLIA 圖片檔名
+       --------------------------------------------------------- */
+
+    async function addImage(dataURL){
+
+        if(!dataURL){
+            return null;
+        }
+
+        const bytes =
+            dataURLToBytes(dataURL);
+
+        if(!bytes){
+            return null;
+        }
+
+        const hash =
+            await sha256Hex(bytes);
+
+        const mime =
+            getDataURLMime(dataURL);
+
+        const extension =
+            getImageExtension(mime);
+
+        const filename =
+            hash + extension;
+
+
+        /* 同一張圖片只加入一次 */
+
+        if(!imageFiles.has(filename)){
+
+            imageFiles.set(
+                filename,
+                {
+                    name: filename,
+                    data: bytes
+                }
+            );
+
+        }
+
+
+        /* CCFOLIA resources */
+
+        resources[filename] = {
+            type: mime
+        };
+
+
+        return filename;
+
+    }
+
+
+    /* ---------------------------------------------------------
+       背景
+       --------------------------------------------------------- */
+
+    const backgroundFilename =
+        await addImage(backgroundData);
+
+
+    /* ---------------------------------------------------------
+       前景
+       --------------------------------------------------------- */
+
+    const foregroundFilename =
+        await addImage(foregroundData);
+
+
+    /* ---------------------------------------------------------
+       建立 Room
+       --------------------------------------------------------- */
+
+    const room = {
+
+    backgroundUrl:
+        backgroundStorage === "room"
+            ? backgroundFilename
+            : null,
+
+    foregroundUrl:
+        foregroundStorage === "room"
+            ? foregroundFilename
+            : null,
+
+    sceneId:
+        null
+};
+
+
+    /* ---------------------------------------------------------
+       建立場景
+       --------------------------------------------------------- */
+
+    const scene = {
+
+    name:
+        "場景",
+
+    backgroundUrl:
+        backgroundStorage === "scene"
+            ? backgroundFilename
+            : null,
+
+    foregroundUrl:
+        foregroundStorage === "scene"
+            ? foregroundFilename
+            : null,
+
+    fieldObjectFit:
+        "fill",
+
+    fieldWidth: 1920,
+fieldHeight: 1080,
+gridSize: 24,
+displayGrid: true,
+
+    markers:
+        {},
+
+    text:
+        "",
+
+    locked:
+        false,
+
+    order:
+        0
+};
+
+
+    /* ---------------------------------------------------------
+       Room JSON
+       --------------------------------------------------------- */
+
+    const data = {
+
+        meta: {
+
+            version:
+                "1.1.0"
+
+        },
+
+
+        entities: {
+
+            room:
+                room,
+
+            items:
+                {},
+
+            decks:
+                {},
+
+            notes:
+                {},
+
+            characters:
+                {}
+
+        },
+
+
+        effects:
+            {},
+
+
+        scenes: {
+
+            scene_001:
+                scene
+
+        },
+
+
+        savedatas:
+            {},
+
+
+        snapshots:
+            {},
+
+
+        resources:
+            resources
+
+    };
+
+
+    /* ---------------------------------------------------------
+       圖片物件
+       --------------------------------------------------------- */
+
+    for(
+        const object of objects
+    ){
+
+        const imageFilename =
+            await addImage(
+                object.imageUrl
+            );
+
+
+        /*
+           場景編輯器：
+
+           左上角 = 0,0
+           寬 = 1000
+           高 = 700
+
+           CCFOLIA：
+
+           中心 = 0,0
+           寬度 = 40
+           高度 = 30
+
+           所以：
+
+           1000 px → 40
+           700 px  → 30
+
+           1 CCFOLIA 單位 = 25 px
+        */
+
+
+        const x =
+    (
+        object.x +
+        object.width / 2 -
+        960
+    ) / 24;
+
+
+const y =
+    (
+        object.y +
+        object.height / 2 -
+        540
+    ) / 24;
+
+
+const width =
+    object.width / 24;
+
+
+const height =
+    object.height / 24;
+
+
+        /* -----------------------------------------------------
+           CCFOLIA Item
+           ----------------------------------------------------- */
+
+        data.entities.items[
+            object.id
+        ] = {
+
+            x:
+                x,
+
+            y:
+                y,
+
+            z:
+                object.z,
+
+            angle:
+                object.angle,
+
+            width:
+                width,
+
+            height:
+                height,
+
+            deckId:
+                null,
+
+            locked:
+                false,
+
+            visible:
+                true,
+
+            closed:
+                false,
+
+            withoutOwner:
+                false,
+
+            freezed:
+                false,
+
+            type:
+                "object",
+
+            active:
+                false,
+
+            memo:
+                "",
+
+            imageUrl:
+                imageFilename,
+
+            coverImageUrl:
+                null,
+
+            clickAction:
+                null,
+
+            order:
+                object.z
+
+        };
+
+    }
+
+
+    return {
+
+        data,
+
+        imageFiles
+
+    };
+
+}
+
+
+
+
+
+/*
+  =========================================================
+  ZIP 匯出
+  =========================================================
+*/
+
+document
+    .getElementById("exportZIP")
+    .addEventListener(
+        "click",
+        async function(){
+
+            const status =
+                document.getElementById(
+                    "zipStatus"
+                );
+
+
+            try{
+
+                status.style.color =
+                    "#aaa";
+
+                status.textContent =
+                    "正在建立 CCFOLIA Room ZIP…";
+
+
+                /*
+                  建立場景資料
+                */
+
+                const result =
+                    await buildSceneRoom();
+
+
+                const roomData =
+                    result.data;
+
+
+                const imageFiles =
+                    result.imageFiles;
+
+
+                /*
+                  ------------------------------------------------
+                  __data.json
+                  ------------------------------------------------
+                */
+
+                const dataJSON =
+                    JSON.stringify(
+                        roomData,
+                        null,
+                        2
+                    ) + "\n";
+
+
+                const dataBytes =
+                    new TextEncoder().encode(
+                        dataJSON
+                    );
+
+
+                /*
+                  ------------------------------------------------
+                  data.json SHA-256
+                  ------------------------------------------------
+                */
+
+                const dataHash =
+                    await sha256Hex(
+                        dataBytes
+                    );
+
+
+                /*
+                  ------------------------------------------------
+                  .token
+                  ------------------------------------------------
+                */
+
+                const tokenText =
+                    "0." +
+                    dataHash;
+
+
+                const tokenBytes =
+                    new TextEncoder().encode(
+                        tokenText
+                    );
+
+
+                /*
+                  ------------------------------------------------
+                  ZIP Entries
+                  ------------------------------------------------
+                */
+
+                const zipEntries = [
+
+                    {
+
+                        name:
+                            "__data.json",
+
+                        data:
+                            dataBytes
+
+                    },
+
+                    {
+
+                        name:
+                            ".token",
+
+                        data:
+                            tokenBytes
+
+                    }
+
+                ];
+
+
+                /*
+                  ------------------------------------------------
+                  加入所有圖片
+                  ------------------------------------------------
+                */
+
+                for(
+                    const image
+                    of imageFiles.values()
+                ){
+
+                    zipEntries.push({
+
+                        name:
+                            image.name,
+
+                        data:
+                            image.data
+
+                    });
+
+                }
+
+
+                /*
+                  ------------------------------------------------
+                  建立 ZIP
+                  ------------------------------------------------
+                */
+
+                const zipBytes =
+                    createStoredZip(
+                        zipEntries
+                    );
+
+
+                const blob =
+                    new Blob(
+                        [zipBytes],
+                        {
+                            type:
+                                "application/zip"
+                        }
+                    );
+
+
+                /*
+                  ------------------------------------------------
+                  ZIP 檔名
+                  ------------------------------------------------
+                */
+
+                const downloadName =
+                    "cocofolia_scene-room.zip";
+
+
+                const url =
+                    URL.createObjectURL(
+                        blob
+                    );
+
+
+                const a =
+                    document.createElement(
+                        "a"
+                    );
+
+
+                a.href =
+                    url;
+
+                a.download =
+                    downloadName;
+
+
+                document.body.appendChild(
+                    a
+                );
+
+                a.click();
+
+                a.remove();
+
+
+                setTimeout(
+                    () =>
+                        URL.revokeObjectURL(
+                            url
+                        ),
+                    1000
+                );
+
+
+                /*
+                  ------------------------------------------------
+                  完成訊息
+                  ------------------------------------------------
+                */
+
+                status.style.color =
+                    "#7bd99a";
+
+                status.textContent =
+                    "✓ CCFOLIA Room ZIP 已建立。\n" +
+                    "包含：__data.json、.token、" +
+                    imageFiles.size +
+                    " 張圖片。";
+
+
+            }catch(error){
+
+                console.error(
+                    "Room ZIP 建立失敗：",
+                    error
+                );
+
+
+                status.style.color =
+                    "#ff7b7b";
+
+                status.textContent =
+                    "❌ Room ZIP 建立失敗：\n" +
+                    error.message;
+
+            }
+
+        }
+    );
+
+
+/* ==========================================
+   PNG 輸出
+========================================== */
+
+document.getElementById("exportPNG")
+.addEventListener("click", async function() {
+
+    const canvas =
+        document.createElement("canvas");
+
+    const sceneWidth = 1920;
+const sceneHeight = 1080;
+
+    canvas.width = sceneWidth;
+
+    canvas.height = sceneHeight;
+
+    const ctx =
+        canvas.getContext("2d");
+
+
+    /*
+        背景
+    */
+
+    if (backgroundData) {
+
+        const img =
+            await loadImage(backgroundData);
+
+        ctx.drawImage(
+            img,
+            0,
+            0,
+            sceneWidth,
+            sceneHeight
+        );
+
+    }
+
+
+    /*
+        物件
+    */
+
+    const sorted =
+        [...objects].sort(
+            (a,b) => a.z - b.z
+        );
+
+
+    for (const object of sorted) {
+
+        const img =
+            await loadImage(object.imageUrl);
+
+        ctx.save();
+
+        ctx.globalAlpha =
+            object.opacity;
+
+        ctx.translate(
+            object.x + object.width / 2,
+            object.y + object.height / 2
+        );
+
+        ctx.rotate(
+            object.angle *
+            Math.PI /
+            180
+        );
+
+        ctx.scale(
+            object.flipX ? -1 : 1,
+            object.flipY ? -1 : 1
+        );
+
+        ctx.drawImage(
+            img,
+            -object.width / 2,
+            -object.height / 2,
+            object.width,
+            object.height
+        );
+
+        ctx.restore();
+
+    }
+
+
+    /*
+        前景
+    */
+
+    if (foregroundData) {
+
+        const img =
+            await loadImage(foregroundData);
+
+        ctx.drawImage(
+            img,
+            0,
+            0,
+            sceneWidth,
+            sceneHeight
+        );
+
+    }
+
+
+    canvas.toBlob(function(blob) {
+
+        const url =
+            URL.createObjectURL(blob);
+
+        const a =
+            document.createElement("a");
+
+        a.href = url;
+
+        a.download =
+            "cocofolia_scene.png";
+
+        a.click();
+
+        URL.revokeObjectURL(url);
+
+    });
+
+});
+
+
+function loadImage(src) {
+
+    return new Promise((resolve, reject) => {
+
+        const img =
+            new Image();
+
+        img.onload = () =>
+            resolve(img);
+
+        img.onerror = reject;
+
+        img.src = src;
+
+    });
+
+}
+
+
+/* ==========================================
+   初始化
+========================================== */
+
+render();
+
+/* =========================================================
+   VIEWPORT
+   只控制「觀看方式」
+   不會修改物件座標
+========================================================= */
+
+let viewScale = 1;
+let viewX = 0;
+let viewY = 0;
+
+let viewDragging = false;
+
+let viewDragStartX = 0;
+let viewDragStartY = 0;
+
+let viewStartX = 0;
+let viewStartY = 0;
+
+const MIN_VIEW_SCALE = 0.1;
+const MAX_VIEW_SCALE = 2;
+
+
+/* ---------------------------------------------------------
+   更新畫布顯示
+--------------------------------------------------------- */
+
+function updateViewport(){
+
+    const scene =
+        document.getElementById("scene");
+
+    const zoomValue =
+        document.getElementById("zoomValue");
+
+    if(!scene) return;
+
+    scene.style.transform =
+        `translate(${viewX}px, ${viewY}px) scale(${viewScale})`;
+
+    if(zoomValue){
+
+        zoomValue.textContent =
+            Math.round(viewScale * 100) + "%";
+
+    }
+
+}
+
+
+/* ---------------------------------------------------------
+   限制畫布不要完全跑出工作區
+--------------------------------------------------------- */
+
+function clampViewport(){
+
+    const workspace =
+        document.getElementById("workspace");
+
+    if(!workspace) return;
+
+    const vw =
+        workspace.clientWidth;
+
+    const vh =
+        workspace.clientHeight;
+
+    const canvasWidth =
+        1920 * viewScale;
+
+    const canvasHeight =
+        1080 * viewScale;
+
+    /*
+     * 至少保留一部分畫布在畫面內
+     */
+    const minVisible = 120;
+
+    const maxX =
+        Math.max(
+            0,
+            (canvasWidth + vw) / 2 - minVisible
+        );
+
+    const maxY =
+        Math.max(
+            0,
+            (canvasHeight + vh) / 2 - minVisible
+        );
+
+    viewX =
+        Math.max(
+            -maxX,
+            Math.min(maxX, viewX)
+        );
+
+    viewY =
+        Math.max(
+            -maxY,
+            Math.min(maxY, viewY)
+        );
+
+}
+
+
+/* ---------------------------------------------------------
+   設定縮放
+--------------------------------------------------------- */
+
+function setViewport(scale, x = viewX, y = viewY){
+
+    viewScale =
+        Math.max(
+            MIN_VIEW_SCALE,
+            Math.min(MAX_VIEW_SCALE, scale)
+        );
+
+    viewX = x;
+    viewY = y;
+
+    clampViewport();
+
+    updateViewport();
+
+}
+
+
+/* ---------------------------------------------------------
+   Fit：整張 1920 × 1080 顯示在工作區
+--------------------------------------------------------- */
+
+function fitCanvas(){
+
+    const workspace =
+        document.getElementById("workspace");
+
+    if(!workspace) return;
+
+    const vw =
+        workspace.clientWidth;
+
+    const vh =
+        workspace.clientHeight;
+
+    const padding = 40;
+
+    const scaleX =
+        (vw - padding) / 1920;
+
+    const scaleY =
+        (vh - padding) / 1080;
+
+    viewScale =
+        Math.min(scaleX, scaleY);
+
+    viewScale =
+        Math.max(
+            MIN_VIEW_SCALE,
+            Math.min(MAX_VIEW_SCALE, viewScale)
+        );
+
+    viewX = 0;
+    viewY = 0;
+
+    updateViewport();
+
+}
+
+
+/* ---------------------------------------------------------
+   滾輪縮放
+--------------------------------------------------------- */
+
+document
+.getElementById("workspace")
+.addEventListener(
+    "wheel",
+    function(e){
+
+        e.preventDefault();
+
+        const rect =
+            this.getBoundingClientRect();
+
+        /*
+         * 滑鼠相對於工作區中心
+         */
+        const mouseX =
+            e.clientX -
+            rect.left -
+            rect.width / 2;
+
+        const mouseY =
+            e.clientY -
+            rect.top -
+            rect.height / 2;
+
+        /*
+         * 找到滑鼠目前對應到 Scene 的哪個位置
+         */
+        const canvasX =
+            (mouseX - viewX) /
+            viewScale;
+
+        const canvasY =
+            (mouseY - viewY) /
+            viewScale;
+
+        const factor =
+            e.deltaY < 0
+                ? 1.1
+                : 0.9;
+
+        const newScale =
+            Math.max(
+                MIN_VIEW_SCALE,
+                Math.min(
+                    MAX_VIEW_SCALE,
+                    viewScale * factor
+                )
+            );
+
+        /*
+         * 保持滑鼠指向的位置不動
+         */
+        viewScale = newScale;
+
+        viewX =
+            mouseX -
+            canvasX * newScale;
+
+        viewY =
+            mouseY -
+            canvasY * newScale;
+
+        clampViewport();
+
+        updateViewport();
+
+    },
+    { passive:false }
+);
+
+
+/* ---------------------------------------------------------
+   放大
+--------------------------------------------------------- */
+
+document
+.getElementById("zoomIn")
+.addEventListener("click", function(){
+
+    setViewport(
+        viewScale * 1.1
+    );
+
+});
+
+
+/* ---------------------------------------------------------
+   縮小
+--------------------------------------------------------- */
+
+document
+.getElementById("zoomOut")
+.addEventListener("click", function(){
+
+    setViewport(
+        viewScale * 0.9
+    );
+
+});
+
+
+/* ---------------------------------------------------------
+   Fit
+--------------------------------------------------------- */
+
+document
+.getElementById("fitCanvas")
+.addEventListener("click", function(){
+
+    fitCanvas();
+
+});
+
+
+/* ---------------------------------------------------------
+   100%
+--------------------------------------------------------- */
+
+document
+.getElementById("resetView")
+.addEventListener("click", function(){
+
+    setViewport(
+        1,
+        0,
+        0
+    );
+
+});
+
+
+/* ---------------------------------------------------------
+   空白區域拖曳
+--------------------------------------------------------- */
+
+scene.addEventListener(
+    "mousedown",
+    function(e){
+
+        /*
+         * 只有點到 Scene 空白處
+         */
+        if(e.target !== scene) return;
+
+        if(e.button !== 0) return;
+
+        viewDragging = true;
+
+        viewDragStartX = e.clientX;
+        viewDragStartY = e.clientY;
+
+        viewStartX = viewX;
+        viewStartY = viewY;
+
+        scene.style.cursor =
+            "grabbing";
+
+        e.preventDefault();
+
+    }
+);
+
+
+/* ---------------------------------------------------------
+   平移
+--------------------------------------------------------- */
+
+document.addEventListener(
+    "mousemove",
+    function(e){
+
+        if(!viewDragging) return;
+
+        viewX =
+            viewStartX +
+            (e.clientX - viewDragStartX);
+
+        viewY =
+            viewStartY +
+            (e.clientY - viewDragStartY);
+
+        clampViewport();
+
+        updateViewport();
+
+    }
+);
+
+
+/* ---------------------------------------------------------
+   結束平移
+--------------------------------------------------------- */
+
+document.addEventListener(
+    "mouseup",
+    function(){
+
+        if(!viewDragging) return;
+
+        viewDragging = false;
+
+        scene.style.cursor = "";
+
+    }
+);
+
+
+/* ---------------------------------------------------------
+   視窗大小改變
+--------------------------------------------------------- */
+
+window.addEventListener(
+    "resize",
+    function(){
+
+        clampViewport();
+
+        updateViewport();
+
+    }
+);
+
+
+/* ---------------------------------------------------------
+   初始 Fit
+--------------------------------------------------------- */
+
+requestAnimationFrame(
+    function(){
+
+        fitCanvas();
+
+    }
+);
+
+</script>
+
+</body>
+</html>
