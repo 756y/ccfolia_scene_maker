@@ -654,6 +654,17 @@ button:active {
 
 const scenes = [];
 
+/*
+ * =========================================================
+ * 全場景共用的「畫面元件」
+ *
+ * 切換 Scene 時不會消失
+ * =========================================================
+ */
+const sharedObjects = [];
+
+let sharedZCounter = 1;
+
 let currentSceneId = null;
 
 let selectedId = null;
@@ -672,11 +683,30 @@ function getCurrentScene() {
 }
 
 
+/*
+ * =========================================================
+ * 取得目前畫面上應該顯示的所有元件
+ *
+ * ① sharedObjects
+ *    → 所有場景共用的畫面元件
+ *
+ * ② scene.objects
+ *    → 目前 Scene 專屬的場景標誌元件
+ * =========================================================
+ */
 function getObjects() {
 
-    const scene = getCurrentScene();
+    const scene =
+        getCurrentScene();
 
-    return scene ? scene.objects : [];
+    if (!scene) {
+        return [];
+    }
+
+    return [
+        ...sharedObjects,
+        ...scene.objects
+    ];
 
 }
 
@@ -1477,7 +1507,7 @@ objectImageInput.addEventListener("change", async function(e) {
                 100,
 
             z:
-                scene.zCounter++,
+    sharedZCounter++,
 
             angle:
                 0,
@@ -1500,7 +1530,7 @@ objectImageInput.addEventListener("change", async function(e) {
         };
 
 
-        getObjects().push(object);
+        sharedObjects.push(object);
 
         render();
 
@@ -1572,7 +1602,7 @@ markerImageInput.addEventListener("change", async function(e) {
                 100,
 
             z:
-                scene.zCounter++,
+    sharedZCounter++,
 
             angle:
                 0,
@@ -1598,11 +1628,11 @@ markerImageInput.addEventListener("change", async function(e) {
         };
 
 
-        getObjects().push(object);
+        scene.objects.push(object);
 
-        render();
+render();
 
-        selectObject(object.id);
+selectObject(object.id);
 
 
     } catch (error) {
@@ -2209,21 +2239,47 @@ document.getElementById("duplicate")
 
     const copy = {
 
-        ...object,
+    ...object,
 
-        id: createId(),
+    id:
+        createId(),
 
-        name: object.name + " 副本",
+    name:
+        object.name + " 副本",
 
-        x: object.x + 20,
+    x:
+        object.x + 20,
 
-        y: object.y + 20,
+    y:
+        object.y + 20,
 
-        z: ++scene.zCounter
+    z:
+        object.type === "sceneMarker"
+            ? ++scene.zCounter
+            : ++sharedZCounter
 
-    };
+};
 
-    getObjects().push(copy);
+
+/*
+ * 場景標誌 → 留在目前 Scene
+ *
+ * 一般畫面元件 → 全場景共用
+ */
+if (object.type === "sceneMarker") {
+
+    scene.objects.push(copy);
+
+} else {
+
+    sharedObjects.push(copy);
+
+}
+
+
+render();
+
+selectObject(copy.id);
 
     render();
 
@@ -2241,8 +2297,42 @@ document.getElementById("delete")
 
     if (!selectedId) return;
 
-    const objects =
-        getObjects();
+    const scene =
+    getCurrentScene();
+
+let objects;
+
+if (scene) {
+
+    /*
+     * 場景標誌 → 從目前 Scene 刪除
+     */
+    if (
+        scene.objects.some(
+            o => o.id === selectedId
+        )
+    ) {
+
+        objects =
+            scene.objects;
+
+    }
+
+    /*
+     * 一般畫面元件
+     * → 從全場景共用物件刪除
+     */
+    else {
+
+        objects =
+            sharedObjects;
+
+    }
+
+}
+
+
+if (objects) {
 
     const index =
         objects.findIndex(
@@ -2254,6 +2344,8 @@ document.getElementById("delete")
         objects.splice(index, 1);
 
     }
+
+}
 
     selectedId = null;
 
@@ -2858,6 +2950,12 @@ async function buildSceneRoom() {
 
     const imageFiles = new Map();
 
+    /*
+     * Cocofolia：
+     * 一般畫面元件放在 entities.items
+     */
+    const itemEntities = {};
+
 
     async function addImage(dataURL) {
 
@@ -2943,6 +3041,104 @@ async function buildSceneRoom() {
      */
 
     const sceneEntities = {};
+    
+    /*
+ * =====================================================
+ * 全場景共用的畫面元件
+ *
+ * → entities.items
+ * =====================================================
+ */
+
+for (const object of sharedObjects) {
+
+    const imageFilename =
+        await addImage(
+            object.imageUrl
+        );
+
+    const x =
+        (
+            object.x +
+            object.width / 2 -
+            960
+        ) / 24;
+
+    const y =
+        (
+            object.y +
+            object.height / 2 -
+            540
+        ) / 24;
+
+    const width =
+        object.width / 24;
+
+    const height =
+        object.height / 24;
+
+    itemEntities[object.id] = {
+
+        x:
+            x,
+
+        y:
+            y,
+
+        z:
+            object.z || 0,
+
+        angle:
+            object.angle || 0,
+
+        width:
+            width,
+
+        height:
+            height,
+
+        deckId:
+            null,
+
+        locked:
+            false,
+
+        visible:
+            true,
+
+        closed:
+            false,
+
+        withoutOwner:
+            false,
+
+        freezed:
+            false,
+
+        type:
+            "object",
+
+        active:
+            false,
+
+        memo:
+            "",
+
+        imageUrl:
+            imageFilename,
+
+        coverImageUrl:
+            null,
+
+        clickAction:
+            null,
+
+        order:
+            0
+
+    };
+
+}
 
 
     for (const sceneData of scenes) {
@@ -3007,78 +3203,185 @@ async function buildSceneRoom() {
 };
 
 
-        /*
-         * 這個場景自己的物件
-         */
+/*
+ * =====================================================
+ * 匯出這個場景裡的物件
+ *
+ * Cocofolia：
+ *
+ * 一般「畫面元件」
+ * → entities.items
+ *
+ * 「場景標誌元件」
+ * → scenes[sceneId].markers
+ * =====================================================
+ */
 
-        for (
-            const object
-            of sceneData.objects
-        ) {
+for (
+    const object
+    of sceneData.objects
+) {
 
-            const imageFilename =
-                await addImage(
-                    object.imageUrl
-                );
-
-
-            const x =
-                (
-                    object.x +
-                    object.width / 2 -
-                    960
-                ) / 24;
-
-
-            const y =
-                (
-                    object.y +
-                    object.height / 2 -
-                    540
-                ) / 24;
+    const imageFilename =
+        await addImage(
+            object.imageUrl
+        );
 
 
-            const width =
-                object.width / 24;
+    const x =
+        (
+            object.x +
+            object.width / 2 -
+            960
+        ) / 24;
 
 
-            const height =
-                object.height / 24;
+    const y =
+        (
+            object.y +
+            object.height / 2 -
+            540
+        ) / 24;
 
 
-            const markerId =
-                object.id ||
-                crypto.randomUUID()
-                    .replace(/-/g, "")
-                    .slice(0, 12);
+    const width =
+        object.width / 24;
 
 
-            scene.markers[markerId] = {
+    const height =
+        object.height / 24;
 
-                x: x,
 
-                y: y,
+    const objectId =
+        object.id ||
+        crypto.randomUUID()
+            .replace(/-/g, "")
+            .slice(0, 12);
 
-                z: object.z || 0,
 
-                width: width,
+    /*
+     * =============================================
+     * ① 場景標誌元件
+     *
+     * type === "sceneMarker"
+     * → 存進目前 Scene 的 markers
+     * =============================================
+     */
 
-                height: height,
+    if (object.type === "sceneMarker") {
 
-                locked: false,
+        scene.markers[objectId] = {
 
-                freezed: false,
+            x:
+                x,
 
-                text: "",
+            y:
+                y,
 
-                imageUrl:
-                    imageFilename,
+            z:
+                object.z || 0,
 
-                clickAction: null
+            width:
+                width,
 
-            };
+            height:
+                height,
 
-        }
+            locked:
+                false,
+
+            freezed:
+                false,
+
+            text:
+                "",
+
+            imageUrl:
+                imageFilename,
+
+            clickAction:
+                null
+
+        };
+
+    }
+
+
+    /*
+     * =============================================
+     * ② 一般畫面元件
+     *
+     * 不是 sceneMarker
+     * → 存進 entities.items
+     * =============================================
+     */
+
+    else {
+
+        itemEntities[objectId] = {
+
+            x:
+                x,
+
+            y:
+                y,
+
+            z:
+                object.z || 0,
+
+            angle:
+                object.angle || 0,
+
+            width:
+                width,
+
+            height:
+                height,
+
+            deckId:
+                null,
+
+            locked:
+                false,
+
+            visible:
+                true,
+
+            closed:
+                false,
+
+            withoutOwner:
+                false,
+
+            freezed:
+                false,
+
+            type:
+                "object",
+
+            active:
+                false,
+
+            memo:
+                "",
+
+            imageUrl:
+                imageFilename,
+
+            coverImageUrl:
+                null,
+
+            clickAction:
+                null,
+
+            order:
+                0
+
+        };
+
+    }
+
+}
 
 
         sceneEntities[sceneData.id] =
@@ -3101,26 +3404,27 @@ async function buildSceneRoom() {
 
         entities: {
 
-            room: room,
+    room: room,
 
-            items: {},
+    items:
+        itemEntities,
 
-            decks: {},
+    decks: {},
 
-            notes: {},
+    notes: {},
 
-            characters: {},
+    characters: {},
 
-            effects: {},
+    effects: {},
 
-            scenes:
-                sceneEntities,
+    scenes:
+        sceneEntities,
 
-            savedatas: {},
+    savedatas: {},
 
-            snapshots: {}
+    snapshots: {}
 
-        },
+},
 
         resources:
             resources
