@@ -1134,9 +1134,18 @@ function getSelectedObject() {
 
 /* =========================================================
    圖片標準化
-   所有載入圖片最後統一為 PNG
-   PNG ≤ 4.8MB：保留原始 PNG，不重新編碼
-   超過限制：等比例縮小後重新輸出 PNG
+   ---------------------------------------------------------
+   所有輸入圖片最後一律重新編碼成 PNG。
+
+   不論原本是：
+   PNG / JPG / JPEG / WEBP / GIF ...
+
+   匯出時都會統一成：
+   PNG
+
+   這樣可以避免：
+   1. 副檔名是 PNG，但實際仍保留不同來源編碼
+   2. 後續鏡像 / 透明度處理時格式不一致
    ========================================================= */
 
 const MAX_IMAGE_BYTES = 4.8 * 1024 * 1024;
@@ -1150,9 +1159,13 @@ function fileToDataURL(file) {
 
         const reader = new FileReader();
 
-        reader.onload = () => resolve(reader.result);
+        reader.onload = () =>
+            resolve(reader.result);
+
         reader.onerror = () =>
-            reject(new Error("圖片讀取失敗。"));
+            reject(
+                new Error("圖片讀取失敗。")
+            );
 
         reader.readAsDataURL(file);
 
@@ -1168,10 +1181,13 @@ function dataURLToImage(dataURL) {
 
         const img = new Image();
 
-        img.onload = () => resolve(img);
+        img.onload = () =>
+            resolve(img);
 
         img.onerror = () =>
-            reject(new Error("圖片解析失敗。"));
+            reject(
+                new Error("圖片解析失敗。")
+            );
 
         img.src = dataURL;
 
@@ -1191,21 +1207,28 @@ function canvasToPNG(canvas) {
                 if (!blob) {
 
                     reject(
-                        new Error("PNG 圖片產生失敗。")
+                        new Error(
+                            "PNG 圖片產生失敗。"
+                        )
                     );
 
                     return;
 
                 }
 
-                const reader = new FileReader();
+                const reader =
+                    new FileReader();
 
                 reader.onload =
-                    () => resolve(reader.result);
+                    () => resolve(
+                        reader.result
+                    );
 
                 reader.onerror =
                     () => reject(
-                        new Error("PNG 讀取失敗。")
+                        new Error(
+                            "PNG 讀取失敗。"
+                        )
                     );
 
                 reader.readAsDataURL(blob);
@@ -1219,10 +1242,12 @@ function canvasToPNG(canvas) {
 }
 
 
-/*
- * 將圖片按照比例縮放
- */
-function getScaledSize(width, height, maxDimension) {
+/* 按比例限制最大尺寸 */
+function getScaledSize(
+    width,
+    height,
+    maxDimension
+) {
 
     const largest =
         Math.max(width, height);
@@ -1258,56 +1283,26 @@ function getScaledSize(width, height, maxDimension) {
 }
 
 
-/*
- * 核心：
- * 所有圖片最後都變成 PNG
- */
+/* =========================================================
+   原始圖片 → 統一 PNG
+
+   注意：
+   這裡「一定」重新 Canvas → PNG。
+
+   所以即使原圖本來就是 PNG，
+   也不再直接保留原始 PNG bytes。
+   ========================================================= */
+
 async function prepareImage(file) {
-
-    /*
-     * -----------------------------------------------------
-     * 1. PNG 本身，而且 ≤ 4.8MB
-     *    → 完全不重新編碼
-     * -----------------------------------------------------
-     */
-
-    if (
-        file.type === "image/png" &&
-        file.size <= MAX_IMAGE_BYTES
-    ) {
-
-        return {
-
-            dataURL:
-                await fileToDataURL(file),
-
-            width: null,
-            height: null
-
-        };
-
-    }
-
-
-    /*
-     * -----------------------------------------------------
-     * 2. 其他圖片 / 超過大小的 PNG
-     * -----------------------------------------------------
-     */
 
     const originalDataURL =
         await fileToDataURL(file);
 
     const img =
-        await dataURLToImage(originalDataURL);
+        await dataURLToImage(
+            originalDataURL
+        );
 
-
-    /*
-     * 先限制最大尺寸。
-     *
-     * 這一步不是壓縮畫質，
-     * 只是等比例縮小圖片尺寸。
-     */
 
     let size =
         getScaledSize(
@@ -1317,19 +1312,21 @@ async function prepareImage(file) {
         );
 
 
-    /*
-     * -----------------------------------------------------
-     * 3. 轉 PNG
-     * -----------------------------------------------------
-     */
-
-    async function createPNG(width, height) {
+    async function createPNG(
+        width,
+        height
+    ) {
 
         const canvas =
-            document.createElement("canvas");
+            document.createElement(
+                "canvas"
+            );
 
-        canvas.width = width;
-        canvas.height = height;
+        canvas.width =
+            width;
+
+        canvas.height =
+            height;
 
         const ctx =
             canvas.getContext("2d");
@@ -1342,8 +1339,9 @@ async function prepareImage(file) {
 
         }
 
+
         /*
-         * PNG 保留透明背景
+         * 保留透明背景
          */
         ctx.clearRect(
             0,
@@ -1352,6 +1350,10 @@ async function prepareImage(file) {
             height
         );
 
+
+        /*
+         * 所有圖片統一重新繪製
+         */
         ctx.drawImage(
             img,
             0,
@@ -1360,30 +1362,28 @@ async function prepareImage(file) {
             height
         );
 
+
         const dataURL =
             await canvasToPNG(canvas);
+
 
         return {
 
             dataURL,
 
             width,
+
             height,
 
             bytes:
-                dataURLToBytes(dataURL)
+                dataURLToBytes(
+                    dataURL
+                )
 
         };
 
     }
 
-
-    /*
-     * -----------------------------------------------------
-     * 4. 如果 PNG 太大
-     *    → 只縮尺寸，不做 JPEG 品質壓縮
-     * -----------------------------------------------------
-     */
 
     let result =
         await createPNG(
@@ -1392,16 +1392,14 @@ async function prepareImage(file) {
         );
 
 
+    /*
+     * PNG 超過 4.8 MB
+     * 只縮小尺寸，不改成 JPEG
+     */
     while (
         result.bytes.length >
         MAX_IMAGE_BYTES
     ) {
-
-        /*
-         * 每次縮小 10%
-         *
-         * 這是尺寸縮小，不是 JPEG 那種失真壓縮。
-         */
 
         size = {
 
@@ -1431,10 +1429,6 @@ async function prepareImage(file) {
             );
 
 
-        /*
-         * 防止極端情況無限迴圈
-         */
-
         if (
             size.width <= 1 &&
             size.height <= 1
@@ -1457,6 +1451,212 @@ async function prepareImage(file) {
 
         height:
             result.height
+
+    };
+
+}
+
+/* =========================================================
+   物件圖片處理
+   ---------------------------------------------------------
+   將：
+
+   flipX
+   flipY
+   opacity
+
+   直接烘進 PNG 圖片。
+
+   注意：
+   rotation 不在這裡處理。
+
+   因為 Cocofolia 的 object 本身有 angle 欄位，
+   所以旋轉仍然由 Room JSON 的 angle 控制。
+   ========================================================= */
+
+async function prepareObjectImage(object) {
+
+    if (!object || !object.imageUrl) {
+        return null;
+    }
+
+
+    const img =
+        await dataURLToImage(
+            object.imageUrl
+        );
+
+
+    let size =
+        getScaledSize(
+            img.naturalWidth,
+            img.naturalHeight,
+            INITIAL_MAX_DIMENSION
+        );
+
+
+    async function createPNG(
+        width,
+        height
+    ) {
+
+        const canvas =
+            document.createElement(
+                "canvas"
+            );
+
+        canvas.width =
+            width;
+
+        canvas.height =
+            height;
+
+
+        const ctx =
+            canvas.getContext("2d");
+
+        if (!ctx) {
+
+            throw new Error(
+                "瀏覽器無法建立 Canvas。"
+            );
+
+        }
+
+
+        ctx.clearRect(
+            0,
+            0,
+            width,
+            height
+        );
+
+
+        /*
+         * 透明度直接寫進 PNG Alpha
+         */
+        ctx.globalAlpha =
+            Math.max(
+                0,
+                Math.min(
+                    1,
+                    Number(object.opacity ?? 1)
+                )
+            );
+
+
+        /*
+         * 以圖片中心為基準鏡像
+         */
+        ctx.translate(
+            width / 2,
+            height / 2
+        );
+
+
+        ctx.scale(
+            object.flipX ? -1 : 1,
+            object.flipY ? -1 : 1
+        );
+
+
+        ctx.drawImage(
+            img,
+            -width / 2,
+            -height / 2,
+            width,
+            height
+        );
+
+
+        ctx.globalAlpha = 1;
+
+
+        const dataURL =
+            await canvasToPNG(
+                canvas
+            );
+
+
+        return {
+
+            dataURL,
+
+            bytes:
+                dataURLToBytes(
+                    dataURL
+                )
+
+        };
+
+    }
+
+
+    let result =
+        await createPNG(
+            size.width,
+            size.height
+        );
+
+
+    /*
+     * 超過大小就縮小圖片
+     */
+    while (
+        result.bytes.length >
+        MAX_IMAGE_BYTES
+    ) {
+
+        size = {
+
+            width:
+                Math.max(
+                    1,
+                    Math.floor(
+                        size.width * 0.9
+                    )
+                ),
+
+            height:
+                Math.max(
+                    1,
+                    Math.floor(
+                        size.height * 0.9
+                    )
+                )
+
+        };
+
+
+        result =
+            await createPNG(
+                size.width,
+                size.height
+            );
+
+
+        if (
+            size.width <= 1 &&
+            size.height <= 1
+        ) {
+
+            break;
+
+        }
+
+    }
+
+
+    return {
+
+        dataURL:
+            result.dataURL,
+
+        width:
+            size.width,
+
+        height:
+            size.height
 
     };
 
@@ -2957,7 +3157,7 @@ async function buildSceneRoom() {
     const itemEntities = {};
 
 
-    async function addImage(dataURL) {
+async function addImage(dataURL) {
 
     if (!dataURL) {
         return null;
@@ -2977,9 +3177,8 @@ async function buildSceneRoom() {
 
 
     /*
-     * 所有圖片現在都已經統一為 PNG
+     * 所有圖片統一使用 PNG
      */
-
     const filename =
         hash + ".png";
 
@@ -2987,19 +3186,14 @@ async function buildSceneRoom() {
     if (!imageFiles.has(filename)) {
 
         imageFiles.set(
-
             filename,
-
             {
-
                 name:
                     filename,
 
                 data:
                     bytes
-
             }
-
         );
 
     }
@@ -3016,7 +3210,6 @@ async function buildSceneRoom() {
     return filename;
 
 }
-
 
     /*
      * Room 本身不再儲存背景 / 前景
@@ -3052,9 +3245,19 @@ async function buildSceneRoom() {
 
 for (const object of sharedObjects) {
 
+    /*
+     * 將鏡像 / 透明度直接烘進 PNG
+     */
+    const prepared =
+        await prepareObjectImage(
+            object
+        );
+
     const imageFilename =
         await addImage(
-            object.imageUrl
+            prepared
+                ? prepared.dataURL
+                : object.imageUrl
         );
 
     const x =
@@ -3222,9 +3425,19 @@ for (
     of sceneData.objects
 ) {
 
+    /*
+     * 將鏡像 / 透明度直接烘進 PNG
+     */
+    const prepared =
+        await prepareObjectImage(
+            object
+        );
+
     const imageFilename =
         await addImage(
-            object.imageUrl
+            prepared
+                ? prepared.dataURL
+                : object.imageUrl
         );
 
 
