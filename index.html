@@ -2013,6 +2013,51 @@ document.getElementById("setForeground")
 });
 
 /* ==========================================
+   清除背景
+========================================== */
+
+document.getElementById("clearBackground")
+.addEventListener("click", function() {
+
+    const scene = getCurrentScene();
+
+    if (!scene) return;
+
+    // 清除場景資料
+    scene.backgroundData = null;
+
+    // 清除畫面上的圖片
+    background.removeAttribute("src");
+
+    // 更新提示文字
+    updateDropHint();
+
+});
+
+
+/* ==========================================
+   清除前景
+========================================== */
+
+document.getElementById("clearForeground")
+.addEventListener("click", function() {
+
+    const scene = getCurrentScene();
+
+    if (!scene) return;
+
+    // 清除場景資料
+    scene.foregroundData = null;
+
+    // 清除畫面上的圖片
+    foreground.removeAttribute("src");
+
+    // 更新提示文字
+    updateDropHint();
+
+});
+
+/* ==========================================
    Render
 ========================================== */
 
