@@ -896,70 +896,425 @@ function getSelectedObject() {
 
 }
 
+/* =========================================================
+   圖片標準化
+   所有載入圖片最後統一為 PNG
+   PNG ≤ 4.8MB：保留原始 PNG，不重新編碼
+   超過限制：等比例縮小後重新輸出 PNG
+   ========================================================= */
+
+const MAX_IMAGE_BYTES = 4.8 * 1024 * 1024;
+const INITIAL_MAX_DIMENSION = 4096;
+
+
+/* File → Data URL */
+function fileToDataURL(file) {
+
+    return new Promise((resolve, reject) => {
+
+        const reader = new FileReader();
+
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () =>
+            reject(new Error("圖片讀取失敗。"));
+
+        reader.readAsDataURL(file);
+
+    });
+
+}
+
+
+/* Data URL → Image */
+function dataURLToImage(dataURL) {
+
+    return new Promise((resolve, reject) => {
+
+        const img = new Image();
+
+        img.onload = () => resolve(img);
+
+        img.onerror = () =>
+            reject(new Error("圖片解析失敗。"));
+
+        img.src = dataURL;
+
+    });
+
+}
+
+
+/* Canvas → PNG Data URL */
+function canvasToPNG(canvas) {
+
+    return new Promise((resolve, reject) => {
+
+        canvas.toBlob(
+            blob => {
+
+                if (!blob) {
+
+                    reject(
+                        new Error("PNG 圖片產生失敗。")
+                    );
+
+                    return;
+
+                }
+
+                const reader = new FileReader();
+
+                reader.onload =
+                    () => resolve(reader.result);
+
+                reader.onerror =
+                    () => reject(
+                        new Error("PNG 讀取失敗。")
+                    );
+
+                reader.readAsDataURL(blob);
+
+            },
+            "image/png"
+        );
+
+    });
+
+}
+
+
+/*
+ * 將圖片按照比例縮放
+ */
+function getScaledSize(width, height, maxDimension) {
+
+    const largest =
+        Math.max(width, height);
+
+    if (largest <= maxDimension) {
+
+        return {
+            width,
+            height
+        };
+
+    }
+
+    const scale =
+        maxDimension / largest;
+
+    return {
+
+        width:
+            Math.max(
+                1,
+                Math.round(width * scale)
+            ),
+
+        height:
+            Math.max(
+                1,
+                Math.round(height * scale)
+            )
+
+    };
+
+}
+
+
+/*
+ * 核心：
+ * 所有圖片最後都變成 PNG
+ */
+async function prepareImage(file) {
+
+    /*
+     * -----------------------------------------------------
+     * 1. PNG 本身，而且 ≤ 4.8MB
+     *    → 完全不重新編碼
+     * -----------------------------------------------------
+     */
+
+    if (
+        file.type === "image/png" &&
+        file.size <= MAX_IMAGE_BYTES
+    ) {
+
+        return {
+
+            dataURL:
+                await fileToDataURL(file),
+
+            width: null,
+            height: null
+
+        };
+
+    }
+
+
+    /*
+     * -----------------------------------------------------
+     * 2. 其他圖片 / 超過大小的 PNG
+     * -----------------------------------------------------
+     */
+
+    const originalDataURL =
+        await fileToDataURL(file);
+
+    const img =
+        await dataURLToImage(originalDataURL);
+
+
+    /*
+     * 先限制最大尺寸。
+     *
+     * 這一步不是壓縮畫質，
+     * 只是等比例縮小圖片尺寸。
+     */
+
+    let size =
+        getScaledSize(
+            img.naturalWidth,
+            img.naturalHeight,
+            INITIAL_MAX_DIMENSION
+        );
+
+
+    /*
+     * -----------------------------------------------------
+     * 3. 轉 PNG
+     * -----------------------------------------------------
+     */
+
+    async function createPNG(width, height) {
+
+        const canvas =
+            document.createElement("canvas");
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx =
+            canvas.getContext("2d");
+
+        if (!ctx) {
+
+            throw new Error(
+                "瀏覽器無法建立 Canvas。"
+            );
+
+        }
+
+        /*
+         * PNG 保留透明背景
+         */
+        ctx.clearRect(
+            0,
+            0,
+            width,
+            height
+        );
+
+        ctx.drawImage(
+            img,
+            0,
+            0,
+            width,
+            height
+        );
+
+        const dataURL =
+            await canvasToPNG(canvas);
+
+        return {
+
+            dataURL,
+
+            width,
+            height,
+
+            bytes:
+                dataURLToBytes(dataURL)
+
+        };
+
+    }
+
+
+    /*
+     * -----------------------------------------------------
+     * 4. 如果 PNG 太大
+     *    → 只縮尺寸，不做 JPEG 品質壓縮
+     * -----------------------------------------------------
+     */
+
+    let result =
+        await createPNG(
+            size.width,
+            size.height
+        );
+
+
+    while (
+        result.bytes.length >
+        MAX_IMAGE_BYTES
+    ) {
+
+        /*
+         * 每次縮小 10%
+         *
+         * 這是尺寸縮小，不是 JPEG 那種失真壓縮。
+         */
+
+        size = {
+
+            width:
+                Math.max(
+                    1,
+                    Math.floor(
+                        size.width * 0.9
+                    )
+                ),
+
+            height:
+                Math.max(
+                    1,
+                    Math.floor(
+                        size.height * 0.9
+                    )
+                )
+
+        };
+
+
+        result =
+            await createPNG(
+                size.width,
+                size.height
+            );
+
+
+        /*
+         * 防止極端情況無限迴圈
+         */
+
+        if (
+            size.width <= 1 &&
+            size.height <= 1
+        ) {
+
+            break;
+
+        }
+
+    }
+
+
+    return {
+
+        dataURL:
+            result.dataURL,
+
+        width:
+            result.width,
+
+        height:
+            result.height
+
+    };
+
+}
+
 
 /* ==========================================
    新增畫面元件
 ========================================== */
 
-objectImageInput.addEventListener("change", function(e) {
+objectImageInput.addEventListener("change", async function(e) {
 
     const file = e.target.files[0];
 
     if (!file) return;
 
-    const reader = new FileReader();
+    try {
 
-    reader.onload = function(event) {
+        const prepared =
+            await prepareImage(file);
 
-        const img = new Image();
+        const img =
+            await dataURLToImage(
+                prepared.dataURL
+            );
 
-        img.onload = function() {
+        const scene =
+            getCurrentScene();
 
-            const scene = getCurrentScene();
+        if (!scene) return;
 
-            if (!scene) return;
 
-            const object = {
+        const object = {
 
-                id: createId(),
+            id:
+                createId(),
 
-                name: file.name,
+            name:
+                file.name,
 
-                imageUrl: event.target.result,
+            imageUrl:
+                prepared.dataURL,
 
-                x: 100,
+            x:
+                100,
 
-                y: 100,
+            y:
+                100,
 
-                z: scene.zCounter++,
+            z:
+                scene.zCounter++,
 
-                angle: 0,
+            angle:
+                0,
 
-                width: img.naturalWidth,
+            width:
+                img.naturalWidth,
 
-                height: img.naturalHeight,
+            height:
+                img.naturalHeight,
 
-                opacity: 1,
+            opacity:
+                1,
 
-                flipX: false,
+            flipX:
+                false,
 
-                flipY: false
-
-            };
-
-            getObjects().push(object);
-
-            render();
-
-            selectObject(object.id);
+            flipY:
+                false
 
         };
 
-        img.src = event.target.result;
 
-    };
+        getObjects().push(object);
 
-    reader.readAsDataURL(file);
+        render();
+
+        selectObject(object.id);
+
+
+    } catch (error) {
+
+        console.error(
+            "圖片處理失敗：",
+            error
+        );
+
+        alert(
+            "圖片處理失敗：\n" +
+            error.message
+        );
+
+    }
+
 
     /* 讓下次選同一張圖也能再次觸發 change */
     this.value = "";
@@ -971,67 +1326,93 @@ objectImageInput.addEventListener("change", function(e) {
    新增場景標誌元件
 ========================================== */
 
-markerImageInput.addEventListener("change", function(e) {
+markerImageInput.addEventListener("change", async function(e) {
 
     const file = e.target.files[0];
 
     if (!file) return;
 
-    const reader = new FileReader();
+    try {
 
-    reader.onload = function(event) {
+        const prepared =
+            await prepareImage(file);
 
-        const img = new Image();
+        const img =
+            await dataURLToImage(
+                prepared.dataURL
+            );
 
-        img.onload = function() {
+        const scene =
+            getCurrentScene();
 
-            const scene = getCurrentScene();
+        if (!scene) return;
 
-            if (!scene) return;
 
-            const object = {
+        const object = {
 
-                id: createId(),
+            id:
+                createId(),
 
-                name: file.name,
+            name:
+                file.name,
 
-                imageUrl: event.target.result,
+            imageUrl:
+                prepared.dataURL,
 
-                x: 100,
+            x:
+                100,
 
-                y: 100,
+            y:
+                100,
 
-                z: scene.zCounter++,
+            z:
+                scene.zCounter++,
 
-                angle: 0,
+            angle:
+                0,
 
-                width: img.naturalWidth,
+            width:
+                img.naturalWidth,
 
-                height: img.naturalHeight,
+            height:
+                img.naturalHeight,
 
-                opacity: 1,
+            opacity:
+                1,
 
-                flipX: false,
+            flipX:
+                false,
 
-                flipY: false,
+            flipY:
+                false,
 
-                type: "sceneMarker"
-
-            };
-
-            getObjects().push(object);
-
-            render();
-
-            selectObject(object.id);
+            type:
+                "sceneMarker"
 
         };
 
-        img.src = event.target.result;
 
-    };
+        getObjects().push(object);
 
-    reader.readAsDataURL(file);
+        render();
+
+        selectObject(object.id);
+
+
+    } catch (error) {
+
+        console.error(
+            "圖片處理失敗：",
+            error
+        );
+
+        alert(
+            "圖片處理失敗：\n" +
+            error.message
+        );
+
+    }
+
 
     this.value = "";
 
@@ -1042,70 +1423,114 @@ markerImageInput.addEventListener("change", function(e) {
    設定背景
 ========================================== */
 
-backgroundImageInput.addEventListener("change", function(e) {
+backgroundImageInput.addEventListener(
+    "change",
+    async function(e) {
 
-    const file = e.target.files[0];
+        const file =
+            e.target.files[0];
 
-    if (!file) return;
+        if (!file) return;
 
-    const scene = getCurrentScene();
+        const scene =
+            getCurrentScene();
 
-    if (!scene) return;
+        if (!scene) return;
 
-    const reader = new FileReader();
 
-    reader.onload = function(event) {
+        try {
 
-        scene.backgroundData =
-            event.target.result;
+            const prepared =
+                await prepareImage(file);
 
-        background.src =
-            scene.backgroundData;
 
-        updateDropHint();
+            scene.backgroundData =
+                prepared.dataURL;
 
-    };
 
-    reader.readAsDataURL(file);
+            background.src =
+                scene.backgroundData;
 
-    this.value = "";
 
-});
+            updateDropHint();
+
+
+        } catch (error) {
+
+            console.error(
+                "背景圖片處理失敗：",
+                error
+            );
+
+            alert(
+                "背景圖片處理失敗：\n" +
+                error.message
+            );
+
+        }
+
+
+        this.value = "";
+
+    }
+);
 
 
 /* ==========================================
    設定前景
 ========================================== */
 
-foregroundImageInput.addEventListener("change", function(e) {
+foregroundImageInput.addEventListener(
+    "change",
+    async function(e) {
 
-    const file = e.target.files[0];
+        const file =
+            e.target.files[0];
 
-    if (!file) return;
+        if (!file) return;
 
-    const scene = getCurrentScene();
+        const scene =
+            getCurrentScene();
 
-    if (!scene) return;
+        if (!scene) return;
 
-    const reader = new FileReader();
 
-    reader.onload = function(event) {
+        try {
 
-        scene.foregroundData =
-            event.target.result;
+            const prepared =
+                await prepareImage(file);
 
-        foreground.src =
-            scene.foregroundData;
 
-        updateDropHint();
+            scene.foregroundData =
+                prepared.dataURL;
 
-    };
 
-    reader.readAsDataURL(file);
+            foreground.src =
+                scene.foregroundData;
 
-    this.value = "";
 
-});
+            updateDropHint();
+
+
+        } catch (error) {
+
+            console.error(
+                "前景圖片處理失敗：",
+                error
+            );
+
+            alert(
+                "前景圖片處理失敗：\n" +
+                error.message
+            );
+
+        }
+
+
+        this.value = "";
+
+    }
+);
 
 
 /* ==========================================
@@ -2222,51 +2647,63 @@ async function buildSceneRoom() {
 
     async function addImage(dataURL) {
 
-        if (!dataURL) {
-            return null;
-        }
-
-        const bytes =
-            dataURLToBytes(dataURL);
-
-        if (!bytes) {
-            return null;
-        }
-
-        const hash =
-            await sha256Hex(bytes);
-
-        const mime =
-            getDataURLMime(dataURL);
-
-        const extension =
-            getImageExtension(mime);
-
-        const filename =
-            hash + extension;
+    if (!dataURL) {
+        return null;
+    }
 
 
-        if (!imageFiles.has(filename)) {
+    const bytes =
+        dataURLToBytes(dataURL);
 
-            imageFiles.set(
-                filename,
-                {
-                    name: filename,
-                    data: bytes
-                }
-            );
-
-        }
+    if (!bytes) {
+        return null;
+    }
 
 
-        resources[filename] = {
-            type: mime
-        };
+    const hash =
+        await sha256Hex(bytes);
 
 
-        return filename;
+    /*
+     * 所有圖片現在都已經統一為 PNG
+     */
+
+    const filename =
+        hash + ".png";
+
+
+    if (!imageFiles.has(filename)) {
+
+        imageFiles.set(
+
+            filename,
+
+            {
+
+                name:
+                    filename,
+
+                data:
+                    bytes
+
+            }
+
+        );
 
     }
+
+
+    resources[filename] = {
+
+        type:
+            "image/png"
+
+    };
+
+
+    return filename;
+
+}
 
 
     /*
