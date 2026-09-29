@@ -279,7 +279,8 @@ button:active {
 
     pointer-events: none;
 
-    z-index: 0;
+    /* 背景永遠在最下面 */
+    z-index: -100;
 }
 
 
@@ -296,7 +297,8 @@ button:active {
     width: 1920px;
     height: 1080px;
 
-    z-index: 10;
+    /* 一般物件 / 場景標誌從 Layer 1 開始 */
+    z-index: 1;
 
     pointer-events: none;
 }
@@ -313,17 +315,19 @@ button:active {
 #foreground {
     position: absolute;
 
-    left: 0;
-    top: 0;
+    left: 480px;
+    top: 180px;
 
-    width: 1920px;
-    height: 1080px;
+    width: 960px;
+    height: 720px;
 
     object-fit: fill;
 
+    object-position: center center;
+
     pointer-events: none;
 
-    z-index: 90;
+    z-index: 0;
 }
 
 
@@ -521,7 +525,45 @@ button:active {
 
     <div class="control">
         <label>場景名稱</label>
-        <input id="sceneNameInput" type="text" placeholder="例如：教室、走廊、餐廳">
+        <input
+            id="sceneNameInput"
+            type="text"
+            placeholder="例如：教室、走廊、餐廳"
+        >
+    </div>
+
+    <!-- =========================
+         前景尺寸
+    ========================== -->
+
+    <div class="control">
+        <label>前景寬度</label>
+        <input
+            id="foregroundWidthInput"
+            type="number"
+            min="1"
+            step="1"
+        >
+    </div>
+
+    <div class="control">
+        <label>前景高度</label>
+        <input
+            id="foregroundHeightInput"
+            type="number"
+            min="1"
+            step="1"
+        >
+    </div>
+
+    <div class="control">
+        <label>
+            <input
+                id="foregroundFitInput"
+                type="checkbox"
+            >
+            圖片符合前景尺寸
+        </label>
     </div>
 
     <div class="row">
@@ -672,6 +714,15 @@ function createScene(name = "新場景") {
 
         foregroundData: null,
 
+        /* 前景設定 */
+        foregroundWidth: 40,
+
+        foregroundHeight: 30,
+
+        /* true = 等比例裁切符合尺寸
+           false = 直接拉伸符合尺寸 */
+        foregroundFit: false,
+
         objects: [],
 
         zCounter: 1
@@ -710,6 +761,7 @@ document.getElementById("sceneNameInput")
     renderSceneList();
 
 });
+
 
 
 function deleteCurrentScene() {
@@ -770,6 +822,18 @@ function loadCurrentScene() {
     /* 場景名稱 */
     document.getElementById("sceneNameInput").value =
         scene.name;
+        
+    /* 前景設定 */
+foregroundWidthInput.value =
+    scene.foregroundWidth ?? 40;
+
+foregroundHeightInput.value =
+    scene.foregroundHeight ?? 30;
+
+foregroundFitInput.checked =
+    scene.foregroundFit ?? false;
+
+updateForegroundStyle();
 
     /* 背景 */
     if (scene.backgroundData) {
@@ -804,6 +868,70 @@ function loadCurrentScene() {
     renderSceneList();
 
 }
+
+/* ==========================================
+   前景顯示設定
+========================================== */
+
+function updateForegroundStyle() {
+
+    const scene =
+        getCurrentScene();
+
+    if (!scene) return;
+
+    /*
+     * 前景尺寸是「格數」
+     * 每格 = 24 × 24 px
+     */
+    const gridSize = 24;
+
+    const width =
+        (Number(scene.foregroundWidth) || 40)
+        * gridSize;
+
+    const height =
+        (Number(scene.foregroundHeight) || 30)
+        * gridSize;
+
+    const fit =
+        scene.foregroundFit === true;
+
+    /*
+     * 1920 × 1080 畫布中央
+     */
+    const left =
+        (1920 - width) / 2;
+
+    const top =
+        (1080 - height) / 2;
+
+    foreground.style.width =
+        width + "px";
+
+    foreground.style.height =
+        height + "px";
+
+    foreground.style.left =
+        left + "px";
+
+    foreground.style.top =
+        top + "px";
+
+    /*
+     * true：
+     * 等比例縮放 + 裁切
+     *
+     * false：
+     * 直接拉伸
+     */
+    foreground.style.objectFit =
+        fit
+            ? "cover"
+            : "fill";
+
+}
+
 
 function renderSceneList() {
 
@@ -868,6 +996,15 @@ const foreground = document.getElementById("foreground");
 
 const dropHint = document.getElementById("dropHint");
 
+const foregroundWidthInput =
+    document.getElementById("foregroundWidthInput");
+
+const foregroundHeightInput =
+    document.getElementById("foregroundHeightInput");
+
+const foregroundFitInput =
+    document.getElementById("foregroundFitInput");
+
 const editor = document.getElementById("editor");
 
 const noSelection = document.getElementById("noSelection");
@@ -875,6 +1012,75 @@ const noSelection = document.getElementById("noSelection");
 const sceneCanvas =
     document.getElementById("scene");
 
+
+/* ==========================================
+   前景尺寸設定
+========================================== */
+
+foregroundWidthInput.addEventListener(
+    "input",
+    function() {
+
+        const scene =
+            getCurrentScene();
+
+        if (!scene) return;
+
+        const value =
+            Math.max(
+                1,
+                Number(this.value) || 1
+            );
+
+        scene.foregroundWidth =
+            value;
+
+        updateForegroundStyle();
+
+    }
+);
+
+
+foregroundHeightInput.addEventListener(
+    "input",
+    function() {
+
+        const scene =
+            getCurrentScene();
+
+        if (!scene) return;
+
+        const value =
+            Math.max(
+                1,
+                Number(this.value) || 1
+            );
+
+        scene.foregroundHeight =
+            value;
+
+        updateForegroundStyle();
+
+    }
+);
+
+
+foregroundFitInput.addEventListener(
+    "change",
+    function() {
+
+        const scene =
+            getCurrentScene();
+
+        if (!scene) return;
+
+        scene.foregroundFit =
+            this.checked;
+
+        updateForegroundStyle();
+
+    }
+);
 
 /* ==========================================
    工具
@@ -1502,14 +1708,22 @@ foregroundImageInput.addEventListener(
 
 
             scene.foregroundData =
-                prepared.dataURL;
+    prepared.dataURL;
 
+if (!scene.foregroundWidth) {
+    scene.foregroundWidth = 40;
+}
 
-            foreground.src =
-                scene.foregroundData;
+if (!scene.foregroundHeight) {
+    scene.foregroundHeight = 30;
+}
 
+foreground.src =
+    scene.foregroundData;
 
-            updateDropHint();
+updateForegroundStyle();
+
+updateDropHint();
 
 
         } catch (error) {
@@ -2735,39 +2949,62 @@ async function buildSceneRoom() {
 
         const scene = {
 
-            name:
-                sceneData.name,
+    name:
+        sceneData.name,
 
-            backgroundUrl:
-                await addImage(
-                    sceneData.backgroundData
-                ),
+    backgroundUrl:
+        await addImage(
+            sceneData.backgroundData
+        ),
 
-            foregroundUrl:
-                await addImage(
-                    sceneData.foregroundData
-                ),
+    foregroundUrl:
+        await addImage(
+            sceneData.foregroundData
+        ),
 
-            fieldObjectFit: "fill",
+    /*
+     * 前景尺寸：
+     * 編輯器使用「格數」儲存
+     * 例如 40 × 30
+     */
+    fieldWidth:
+        Number(sceneData.foregroundWidth) || 40,
 
-            fieldWidth: 0,
+    fieldHeight:
+        Number(sceneData.foregroundHeight) || 30,
 
-            fieldHeight: 0,
+    /*
+     * true  = 裁切符合前景尺寸
+     * false = 直接拉伸
+     *
+     * Cocofolia：
+     * cover = 裁切
+     * fill  = 拉伸
+     */
+    fieldObjectFit:
+        sceneData.foregroundFit === true
+            ? "cover"
+            : "fill",
 
-            displayGrid: false,
+    /*
+     * 對齊格線
+     */
+    alignWithGrid: true,
 
-            gridSize: 1,
+    displayGrid: false,
 
-            markers: {},
+    gridSize: 1,
 
-            text: "",
+    markers: {},
 
-            locked: false,
+    text: "",
 
-            order:
-                scenes.indexOf(sceneData)
+    locked: false,
 
-        };
+    order:
+        scenes.indexOf(sceneData)
+
+};
 
 
         /*
@@ -3248,24 +3485,84 @@ const sceneHeight = 1080;
     }
 
 
-    /*
-        前景
-    */
+/*
+    前景
+*/
 
 if (getForegroundData()) {
+
+    const scene =
+        getCurrentScene();
 
     const img =
         await loadImage(
             getForegroundData()
         );
 
-    ctx.drawImage(
-        img,
-        0,
-        0,
-        sceneWidth,
-        sceneHeight
-    );
+    const gridSize = 24;
+
+const foregroundWidth =
+    (Number(scene.foregroundWidth) || 40)
+    * gridSize;
+
+const foregroundHeight =
+    (Number(scene.foregroundHeight) || 30)
+    * gridSize;
+
+    if (scene.foregroundFit === true) {
+
+        /*
+         * 等比例縮放 + 中央裁切
+         */
+
+        const scale =
+            Math.max(
+                foregroundWidth / img.width,
+                foregroundHeight / img.height
+            );
+
+        const drawWidth =
+            img.width * scale;
+
+        const drawHeight =
+            img.height * scale;
+
+        const offsetX =
+            (foregroundWidth - drawWidth) / 2;
+
+        const offsetY =
+            (foregroundHeight - drawHeight) / 2;
+
+        const foregroundX =
+    (sceneWidth - foregroundWidth) / 2;
+
+const foregroundY =
+    (sceneHeight - foregroundHeight) / 2;
+
+ctx.drawImage(
+    img,
+    foregroundX,
+    foregroundY,
+    foregroundWidth,
+    foregroundHeight
+);
+
+    } else {
+
+        /*
+         * 不勾選：
+         * 直接拉伸到指定前景尺寸
+         */
+
+        ctx.drawImage(
+            img,
+            0,
+            0,
+            foregroundWidth,
+            foregroundHeight
+        );
+
+    }
 
 }
 
