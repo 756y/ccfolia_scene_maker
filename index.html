@@ -393,18 +393,46 @@ button:active {
 
     <h3>圖片</h3>
 
-    <input
-        type="file"
-        id="imageInput"
-        accept="image/*"
-        multiple
-        class="full"
-    >
+<h3>新增元件</h3>
 
-    <div class="row" style="margin-top:8px;">
-        <button id="addBackground">設為背景</button>
-        <button id="addForeground">設為前景</button>
-    </div>
+<div class="row">
+    <button id="addImageObject">新增畫面元件</button>
+    <button id="addSceneMarker">場景標誌元件</button>
+</div>
+
+<div class="row">
+    <button id="setBackground">設定背景</button>
+    <button id="setForeground">設定前景</button>
+</div>
+
+<!-- 隱藏的圖片選擇器 -->
+<input
+    type="file"
+    id="objectImageInput"
+    accept="image/*"
+    style="display:none;"
+>
+
+<input
+    type="file"
+    id="markerImageInput"
+    accept="image/*"
+    style="display:none;"
+>
+
+<input
+    type="file"
+    id="backgroundImageInput"
+    accept="image/*"
+    style="display:none;"
+>
+
+<input
+    type="file"
+    id="foregroundImageInput"
+    accept="image/*"
+    style="display:none;"
+>
 
     <h3>物件列表</h3>
 
@@ -818,7 +846,17 @@ function renderSceneList() {
    DOM
 ========================================== */
 
-const imageInput = document.getElementById("imageInput");
+const objectImageInput =
+    document.getElementById("objectImageInput");
+
+const markerImageInput =
+    document.getElementById("markerImageInput");
+
+const backgroundImageInput =
+    document.getElementById("backgroundImageInput");
+
+const foregroundImageInput =
+    document.getElementById("foregroundImageInput");
 
 const objectList = document.getElementById("objectList");
 
@@ -860,89 +898,250 @@ function getSelectedObject() {
 
 
 /* ==========================================
-   圖片匯入
+   新增畫面元件
 ========================================== */
 
-imageInput.addEventListener("change", function(e) {
+objectImageInput.addEventListener("change", function(e) {
 
-    const files = [...e.target.files];
+    const file = e.target.files[0];
 
-    if (files.length === 0) {
-        return;
-    }
+    if (!file) return;
 
-    /*
-     * 記住最後一次選擇的圖片
-     * 背景 / 前景按鈕會使用這張圖片
-     */
-    lastImportedImage = files[files.length - 1];
+    const reader = new FileReader();
 
-    files.forEach(file => {
+    reader.onload = function(event) {
 
-        const reader = new FileReader();
+        const img = new Image();
 
-        reader.onload = function(event) {
+        img.onload = function() {
 
-            const img = new Image();
+            const scene = getCurrentScene();
 
-            img.onload = function() {
+            if (!scene) return;
 
-                const scene = getCurrentScene();
+            const object = {
 
-if (!scene) return;
+                id: createId(),
 
-const object = {
+                name: file.name,
 
-    id: createId(),
+                imageUrl: event.target.result,
 
-    name: file.name,
+                x: 100,
 
-    imageUrl: event.target.result,
+                y: 100,
 
-    x: 100,
+                z: scene.zCounter++,
 
-    y: 100,
+                angle: 0,
 
-    z: scene.zCounter++,
+                width: img.naturalWidth,
 
-    angle: 0,
+                height: img.naturalHeight,
 
-                    width: img.naturalWidth,
+                opacity: 1,
 
-                    height: img.naturalHeight,
+                flipX: false,
 
-                    opacity: 1,
-
-                    flipX: false,
-
-                    flipY: false
-
-                };
-
-                getObjects().push(object);
-
-                render();
-
-                selectObject(object.id);
+                flipY: false
 
             };
 
-            img.src = event.target.result;
+            getObjects().push(object);
+
+            render();
+
+            selectObject(object.id);
 
         };
 
-        reader.readAsDataURL(file);
+        img.src = event.target.result;
 
-    });
+    };
 
-    /*
-     * 不要在這裡清空 input。
-     *
-     * 否則背景 / 前景按鈕會拿不到檔案。
-     */
+    reader.readAsDataURL(file);
+
+    /* 讓下次選同一張圖也能再次觸發 change */
+    this.value = "";
 
 });
 
+
+/* ==========================================
+   新增場景標誌元件
+========================================== */
+
+markerImageInput.addEventListener("change", function(e) {
+
+    const file = e.target.files[0];
+
+    if (!file) return;
+
+    const reader = new FileReader();
+
+    reader.onload = function(event) {
+
+        const img = new Image();
+
+        img.onload = function() {
+
+            const scene = getCurrentScene();
+
+            if (!scene) return;
+
+            const object = {
+
+                id: createId(),
+
+                name: file.name,
+
+                imageUrl: event.target.result,
+
+                x: 100,
+
+                y: 100,
+
+                z: scene.zCounter++,
+
+                angle: 0,
+
+                width: img.naturalWidth,
+
+                height: img.naturalHeight,
+
+                opacity: 1,
+
+                flipX: false,
+
+                flipY: false,
+
+                type: "sceneMarker"
+
+            };
+
+            getObjects().push(object);
+
+            render();
+
+            selectObject(object.id);
+
+        };
+
+        img.src = event.target.result;
+
+    };
+
+    reader.readAsDataURL(file);
+
+    this.value = "";
+
+});
+
+
+/* ==========================================
+   設定背景
+========================================== */
+
+backgroundImageInput.addEventListener("change", function(e) {
+
+    const file = e.target.files[0];
+
+    if (!file) return;
+
+    const scene = getCurrentScene();
+
+    if (!scene) return;
+
+    const reader = new FileReader();
+
+    reader.onload = function(event) {
+
+        scene.backgroundData =
+            event.target.result;
+
+        background.src =
+            scene.backgroundData;
+
+        updateDropHint();
+
+    };
+
+    reader.readAsDataURL(file);
+
+    this.value = "";
+
+});
+
+
+/* ==========================================
+   設定前景
+========================================== */
+
+foregroundImageInput.addEventListener("change", function(e) {
+
+    const file = e.target.files[0];
+
+    if (!file) return;
+
+    const scene = getCurrentScene();
+
+    if (!scene) return;
+
+    const reader = new FileReader();
+
+    reader.onload = function(event) {
+
+        scene.foregroundData =
+            event.target.result;
+
+        foreground.src =
+            scene.foregroundData;
+
+        updateDropHint();
+
+    };
+
+    reader.readAsDataURL(file);
+
+    this.value = "";
+
+});
+
+
+/* ==========================================
+   四個按鈕
+========================================== */
+
+document.getElementById("addImageObject")
+.addEventListener("click", function() {
+
+    objectImageInput.click();
+
+});
+
+
+document.getElementById("addSceneMarker")
+.addEventListener("click", function() {
+
+    markerImageInput.click();
+
+});
+
+
+document.getElementById("setBackground")
+.addEventListener("click", function() {
+
+    backgroundImageInput.click();
+
+});
+
+
+document.getElementById("setForeground")
+.addEventListener("click", function() {
+
+    foregroundImageInput.click();
+
+});
 
 /* ==========================================
    Render
@@ -1537,111 +1736,6 @@ document.getElementById("scene")
     }
 
 });
-
-
-/* ==========================================
-   背景 / 前景
-========================================== */
-
-let lastImportedImage = null;
-
-
-document.getElementById("addBackground").onclick = function() {
-
-    const scene = getCurrentScene();
-
-    if (!scene) return;
-
-    if (!lastImportedImage) {
-
-        alert("請先選擇一張圖片");
-
-        return;
-
-    }
-
-    const reader = new FileReader();
-
-    reader.onload = function(e) {
-
-        scene.backgroundData =
-            e.target.result;
-
-        background.src =
-            scene.backgroundData;
-
-        updateDropHint();
-
-    };
-
-    reader.readAsDataURL(lastImportedImage);
-
-};
-
-
-document.getElementById("addForeground").onclick = function() {
-
-    const scene = getCurrentScene();
-
-    if (!scene) return;
-
-    if (!lastImportedImage) {
-
-        alert("請先選擇一張圖片");
-
-        return;
-
-    }
-
-    const reader = new FileReader();
-
-    reader.onload = function(e) {
-
-        scene.foregroundData =
-            e.target.result;
-
-        foreground.src =
-            scene.foregroundData;
-
-        updateDropHint();
-
-    };
-
-    reader.readAsDataURL(lastImportedImage);
-
-};
-
-
-document.getElementById("clearBackground")
-.onclick = function() {
-
-    const scene = getCurrentScene();
-
-    if (!scene) return;
-
-    scene.backgroundData = null;
-
-    background.removeAttribute("src");
-
-    updateDropHint();
-
-};
-
-
-document.getElementById("clearForeground")
-.onclick = function() {
-
-    const scene = getCurrentScene();
-
-    if (!scene) return;
-
-    scene.foregroundData = null;
-
-    foreground.removeAttribute("src");
-
-    updateDropHint();
-
-};
 
 
 /* ==========================================
