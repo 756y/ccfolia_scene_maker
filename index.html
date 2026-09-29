@@ -122,6 +122,33 @@ button:active {
     background: #555;
 }
 
+#sceneList {
+    border: 1px solid #444;
+    background: #222;
+    max-height: 180px;
+    overflow-y: auto;
+    margin-bottom: 8px;
+}
+
+.scene-list-item {
+    padding: 8px;
+    border-bottom: 1px solid #444;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.scene-list-item:hover {
+    background: #333;
+}
+
+.scene-list-item.selected {
+    background: #555;
+}
+
+#sceneEditor {
+    margin-top: 8px;
+}
+
 #opacityValue {
     font-size: 12px;
     color: #aaa;
@@ -233,26 +260,6 @@ button:active {
     transform-origin: center center;
 
     box-shadow: 0 0 20px #000;
-}
-
-#sceneGrid {
-    position: absolute;
-    inset: 0;
-    z-index: 100;
-    pointer-events: none;
-
-    background-image:
-        linear-gradient(
-            rgba(255,255,255,0.12) 1px,
-            transparent 1px
-        ),
-        linear-gradient(
-            90deg,
-            rgba(255,255,255,0.12) 1px,
-            transparent 1px
-        );
-
-    background-size: 24px 24px;
 }
 
 /* =========================================================
@@ -473,29 +480,27 @@ button:active {
 
     </div>
 
-    <h3>背景 / 前景</h3>
+<h3>場景列表</h3>
 
-<div class="control">
-    <label>背景儲存位置</label>
-
-    <select id="backgroundStorage">
-        <option value="room">Room</option>
-        <option value="scene">Scene</option>
-    </select>
-</div>
-
-<div class="control">
-    <label>前景儲存位置</label>
-
-    <select id="foregroundStorage">
-        <option value="room">Room</option>
-        <option value="scene">Scene</option>
-    </select>
-</div>
+<div id="sceneList"></div>
 
 <div class="row">
-    <button id="clearBackground">清除背景</button>
-    <button id="clearForeground">清除前景</button>
+    <button id="addScene">＋新增場景</button>
+    <button id="deleteScene">刪除場景</button>
+</div>
+
+<div id="sceneEditor">
+
+    <div class="control">
+        <label>場景名稱</label>
+        <input id="sceneNameInput" type="text" placeholder="例如：教室、走廊、餐廳">
+    </div>
+
+    <div class="row">
+        <button id="clearBackground">清除背景</button>
+        <button id="clearForeground">清除前景</button>
+    </div>
+
 </div>
 
     <h3>輸出</h3>
@@ -573,14 +578,240 @@ button:active {
    資料
 ========================================== */
 
-const objects = [];
+/* ==========================================
+   場景資料
+========================================== */
+
+const scenes = [];
+
+let currentSceneId = null;
 
 let selectedId = null;
 
-let backgroundData = null;
-let foregroundData = null;
 
-let zCounter = 1;
+/* ==========================================
+   目前場景
+========================================== */
+
+function getCurrentScene() {
+
+    return scenes.find(
+        scene => scene.id === currentSceneId
+    ) || null;
+
+}
+
+
+function getObjects() {
+
+    const scene = getCurrentScene();
+
+    return scene ? scene.objects : [];
+
+}
+
+
+function getBackgroundData() {
+
+    const scene = getCurrentScene();
+
+    return scene ? scene.backgroundData : null;
+
+}
+
+
+function getForegroundData() {
+
+    const scene = getCurrentScene();
+
+    return scene ? scene.foregroundData : null;
+
+}
+
+/* ==========================================
+   場景管理
+========================================== */
+
+function createScene(name = "新場景") {
+
+    return {
+
+        id: createId(),
+
+        name: name,
+
+        backgroundData: null,
+
+        foregroundData: null,
+
+        objects: [],
+
+        zCounter: 1
+
+    };
+
+}
+
+
+function addScene() {
+
+    const scene = createScene(
+        "場景 " + (scenes.length + 1)
+    );
+
+    scenes.push(scene);
+
+    currentSceneId = scene.id;
+
+    selectedId = null;
+
+    renderSceneList();
+    loadCurrentScene();
+
+}
+
+document.getElementById("sceneNameInput")
+.addEventListener("input", function() {
+
+    const scene = getCurrentScene();
+
+    if (!scene) return;
+
+    scene.name = this.value;
+
+    renderSceneList();
+
+});
+
+
+function deleteCurrentScene() {
+
+    if (!currentSceneId) return;
+
+    if (scenes.length <= 1) {
+
+        alert("至少要保留一個場景。");
+
+        return;
+
+    }
+
+    const index =
+        scenes.findIndex(
+            scene => scene.id === currentSceneId
+        );
+
+    if (index === -1) return;
+
+    scenes.splice(index, 1);
+
+    currentSceneId =
+        scenes[Math.max(0, index - 1)].id;
+
+    selectedId = null;
+
+    renderSceneList();
+    loadCurrentScene();
+
+}
+
+
+function switchScene(id) {
+
+    if (id === currentSceneId) return;
+
+    currentSceneId = id;
+
+    selectedId = null;
+
+    loadCurrentScene();
+
+    renderSceneList();
+
+}
+
+
+function loadCurrentScene() {
+
+    const scene = getCurrentScene();
+
+    if (!scene) return;
+
+    selectedId = null;
+
+    /* 場景名稱 */
+    document.getElementById("sceneNameInput").value =
+        scene.name;
+
+    /* 背景 */
+    if (scene.backgroundData) {
+
+        background.src =
+            scene.backgroundData;
+
+    } else {
+
+        background.removeAttribute("src");
+
+    }
+
+    /* 前景 */
+    if (scene.foregroundData) {
+
+        foreground.src =
+            scene.foregroundData;
+
+    } else {
+
+        foreground.removeAttribute("src");
+
+    }
+
+    editor.style.display = "none";
+
+    noSelection.style.display = "block";
+
+    render();
+
+    renderSceneList();
+
+}
+
+function renderSceneList() {
+
+    const list =
+        document.getElementById("sceneList");
+
+    list.innerHTML = "";
+
+    scenes.forEach((scene, index) => {
+
+        const div =
+            document.createElement("div");
+
+        div.className =
+            "scene-list-item";
+
+        if (scene.id === currentSceneId) {
+
+            div.classList.add("selected");
+
+        }
+
+        div.textContent =
+            (index + 1) + ". " + scene.name;
+
+        div.onclick = function() {
+
+            switchScene(scene.id);
+
+        };
+
+        list.appendChild(div);
+
+    });
+
+}
 
 
 /* ==========================================
@@ -603,6 +834,9 @@ const editor = document.getElementById("editor");
 
 const noSelection = document.getElementById("noSelection");
 
+const sceneCanvas =
+    document.getElementById("scene");
+
 
 /* ==========================================
    工具
@@ -620,7 +854,7 @@ function createId() {
 
 function getSelectedObject() {
 
-    return objects.find(o => o.id === selectedId);
+    return getObjects().find(o => o.id === selectedId);
 
 }
 
@@ -653,21 +887,25 @@ imageInput.addEventListener("change", function(e) {
 
             img.onload = function() {
 
-                const object = {
+                const scene = getCurrentScene();
 
-                    id: createId(),
+if (!scene) return;
 
-                    name: file.name,
+const object = {
 
-                    imageUrl: event.target.result,
+    id: createId(),
 
-                    x: 100,
+    name: file.name,
 
-                    y: 100,
+    imageUrl: event.target.result,
 
-                    z: zCounter++,
+    x: 100,
 
-                    angle: 0,
+    y: 100,
+
+    z: scene.zCounter++,
+
+    angle: 0,
 
                     width: img.naturalWidth,
 
@@ -681,7 +919,7 @@ imageInput.addEventListener("change", function(e) {
 
                 };
 
-                objects.push(object);
+                getObjects().push(object);
 
                 render();
 
@@ -714,7 +952,7 @@ function render() {
 
     objectsContainer.innerHTML = "";
 
-    objects.forEach(object => {
+    getObjects().forEach(object => {
 
         const img = document.createElement("img");
 
@@ -775,7 +1013,7 @@ function updateList() {
 
     objectList.innerHTML = "";
 
-    const sorted = [...objects].sort((a,b) => b.z - a.z);
+    const sorted = [...getObjects()].sort((a,b) => b.z - a.z);
 
     sorted.forEach(object => {
 
@@ -870,12 +1108,28 @@ function selectObject(id) {
 
     document.getElementById("opacityValue").textContent =
         Math.round(object.opacity * 100) + "%";
+        
 
     updateSelectionVisual();
 
     updateList();
 
 }
+
+        document
+    .getElementById("addScene")
+    .addEventListener(
+        "click",
+        addScene
+    );
+
+
+document
+    .getElementById("deleteScene")
+    .addEventListener(
+        "click",
+        deleteCurrentScene
+    );
 
 
 /* ==========================================
@@ -1027,11 +1281,36 @@ document.getElementById("flipY")
 document.getElementById("moveUp")
 .addEventListener("click", function() {
 
+    const objects = getObjects();
     const object = getSelectedObject();
 
     if (!object) return;
 
-    object.z = ++zCounter;
+    const sorted =
+        [...objects].sort((a, b) => a.z - b.z);
+
+    const index =
+        sorted.findIndex(
+            o => o.id === object.id
+        );
+
+    if (index === -1) return;
+
+    if (index < sorted.length - 1) {
+
+        const other =
+            sorted[index + 1];
+
+        const temp =
+            object.z;
+
+        object.z =
+            other.z;
+
+        other.z =
+            temp;
+
+    }
 
     render();
 
@@ -1041,19 +1320,36 @@ document.getElementById("moveUp")
 document.getElementById("moveDown")
 .addEventListener("click", function() {
 
+    const objects = getObjects();
     const object = getSelectedObject();
 
     if (!object) return;
 
-    object.z = Math.max(
-        1,
-        Math.min(
-            ...objects
-                .filter(o => o.id !== object.id)
-                .map(o => o.z),
-            object.z
-        ) - 1
-    );
+    const sorted =
+        [...objects].sort((a, b) => a.z - b.z);
+
+    const index =
+        sorted.findIndex(
+            o => o.id === object.id
+        );
+
+    if (index === -1) return;
+
+    if (index > 0) {
+
+        const other =
+            sorted[index - 1];
+
+        const temp =
+            object.z;
+
+        object.z =
+            other.z;
+
+        other.z =
+            temp;
+
+    }
 
     render();
 
@@ -1069,7 +1365,9 @@ document.getElementById("duplicate")
 
     const object = getSelectedObject();
 
-    if (!object) return;
+    const scene = getCurrentScene();
+
+    if (!object || !scene) return;
 
     const copy = {
 
@@ -1083,11 +1381,11 @@ document.getElementById("duplicate")
 
         y: object.y + 20,
 
-        z: ++zCounter
+        z: ++scene.zCounter
 
     };
 
-    objects.push(copy);
+    getObjects().push(copy);
 
     render();
 
@@ -1105,8 +1403,13 @@ document.getElementById("delete")
 
     if (!selectedId) return;
 
+    const objects =
+        getObjects();
+
     const index =
-        objects.findIndex(o => o.id === selectedId);
+        objects.findIndex(
+            o => o.id === selectedId
+        );
 
     if (index !== -1) {
 
@@ -1115,6 +1418,10 @@ document.getElementById("delete")
     }
 
     selectedId = null;
+
+    editor.style.display = "none";
+
+    noSelection.style.display = "block";
 
     render();
 
@@ -1233,13 +1540,17 @@ document.getElementById("scene")
 
 
 /* ==========================================
-   背景
+   背景 / 前景
 ========================================== */
 
 let lastImportedImage = null;
 
 
 document.getElementById("addBackground").onclick = function() {
+
+    const scene = getCurrentScene();
+
+    if (!scene) return;
 
     if (!lastImportedImage) {
 
@@ -1253,9 +1564,11 @@ document.getElementById("addBackground").onclick = function() {
 
     reader.onload = function(e) {
 
-        backgroundData = e.target.result;
+        scene.backgroundData =
+            e.target.result;
 
-        background.src = backgroundData;
+        background.src =
+            scene.backgroundData;
 
         updateDropHint();
 
@@ -1268,6 +1581,10 @@ document.getElementById("addBackground").onclick = function() {
 
 document.getElementById("addForeground").onclick = function() {
 
+    const scene = getCurrentScene();
+
+    if (!scene) return;
+
     if (!lastImportedImage) {
 
         alert("請先選擇一張圖片");
@@ -1280,9 +1597,11 @@ document.getElementById("addForeground").onclick = function() {
 
     reader.onload = function(e) {
 
-        foregroundData = e.target.result;
+        scene.foregroundData =
+            e.target.result;
 
-        foreground.src = foregroundData;
+        foreground.src =
+            scene.foregroundData;
 
         updateDropHint();
 
@@ -1296,9 +1615,15 @@ document.getElementById("addForeground").onclick = function() {
 document.getElementById("clearBackground")
 .onclick = function() {
 
-    backgroundData = null;
+    const scene = getCurrentScene();
+
+    if (!scene) return;
+
+    scene.backgroundData = null;
 
     background.removeAttribute("src");
+
+    updateDropHint();
 
 };
 
@@ -1306,9 +1631,15 @@ document.getElementById("clearBackground")
 document.getElementById("clearForeground")
 .onclick = function() {
 
-    foregroundData = null;
+    const scene = getCurrentScene();
+
+    if (!scene) return;
+
+    scene.foregroundData = null;
 
     foreground.removeAttribute("src");
+
+    updateDropHint();
 
 };
 
@@ -1321,9 +1652,9 @@ function updateDropHint() {
 
     dropHint.style.display =
         (
-            objects.length === 0 &&
-            !backgroundData &&
-            !foregroundData
+            getObjects().length === 0 &&
+            !getBackgroundData() &&
+            !getForegroundData()
         )
         ? "block"
         : "none";
@@ -1788,32 +2119,23 @@ function createStoredZip(entries){
    建立 CCFOLIA Room JSON
    ========================================================= */
 
-async function buildSceneRoom(){
+async function buildSceneRoom() {
 
     const resources = {};
+
     const imageFiles = new Map();
-    
-    const backgroundStorage =
-    document.getElementById("backgroundStorage").value;
-
-const foregroundStorage =
-    document.getElementById("foregroundStorage").value;
 
 
-    /* ---------------------------------------------------------
-       Data URL → CCFOLIA 圖片檔名
-       --------------------------------------------------------- */
+    async function addImage(dataURL) {
 
-    async function addImage(dataURL){
-
-        if(!dataURL){
+        if (!dataURL) {
             return null;
         }
 
         const bytes =
             dataURLToBytes(dataURL);
 
-        if(!bytes){
+        if (!bytes) {
             return null;
         }
 
@@ -1830,9 +2152,7 @@ const foregroundStorage =
             hash + extension;
 
 
-        /* 同一張圖片只加入一次 */
-
-        if(!imageFiles.has(filename)){
+        if (!imageFiles.has(filename)) {
 
             imageFiles.set(
                 filename,
@@ -1845,8 +2165,6 @@ const foregroundStorage =
         }
 
 
-        /* CCFOLIA resources */
-
         resources[filename] = {
             type: mime
         };
@@ -1857,145 +2175,196 @@ const foregroundStorage =
     }
 
 
-    /* ---------------------------------------------------------
-       背景
-       --------------------------------------------------------- */
-
-    const backgroundFilename =
-        await addImage(backgroundData);
-
-
-    /* ---------------------------------------------------------
-       前景
-       --------------------------------------------------------- */
-
-    const foregroundFilename =
-        await addImage(foregroundData);
-
-
-    /* ---------------------------------------------------------
-       建立 Room
-       --------------------------------------------------------- */
+    /*
+     * Room 本身不再儲存背景 / 前景
+     */
 
     const room = {
 
-    backgroundUrl:
-        backgroundStorage === "room"
-            ? backgroundFilename
-            : null,
+        backgroundUrl: null,
 
-    foregroundUrl:
-        foregroundStorage === "room"
-            ? foregroundFilename
-            : null,
+        foregroundUrl: null,
 
-    sceneId:
-        null
-};
+        sceneId:
+            scenes.length > 0
+                ? scenes[0].id
+                : null
+
+    };
 
 
-    /* ---------------------------------------------------------
-       建立場景
-       --------------------------------------------------------- */
+    /*
+     * 建立所有 Scene
+     */
 
-const sceneId = crypto.randomUUID().replace(/-/g, "").slice(0, 20);
-
-const scene = {
-  name: "場景",
-  backgroundUrl: backgroundStorage === "scene" ? backgroundFilename : null,
-  foregroundUrl: foregroundStorage === "scene" ? foregroundFilename : null,
-  fieldObjectFit: "fill",
-  fieldWidth: 0,
-  fieldHeight: 0,
-  displayGrid: false,
-  gridSize: 1,
-  markers: {},
-  text: "",
-  locked: false,
-  order: 0
-};
+    const sceneEntities = {};
 
 
-    /* ---------------------------------------------------------
-       Room JSON
-       --------------------------------------------------------- */
+    for (const sceneData of scenes) {
 
-const data = {
-    meta: {
-        version: "1.1.0"
-    },
+        const scene = {
 
-    entities: {
-        room: room,
-        items: {},
-        decks: {},
-        notes: {},
-        characters: {},
-        effects: {},
-        scenes: {
-            [sceneId]: scene
-        },
-        savedatas: {},
-        snapshots: {}
-    },
+            name:
+                sceneData.name,
 
-    resources: resources
-};
+            backgroundUrl:
+                await addImage(
+                    sceneData.backgroundData
+                ),
 
+            foregroundUrl:
+                await addImage(
+                    sceneData.foregroundData
+                ),
 
-    /* ---------------------------------------------------------
-       圖片物件
-       --------------------------------------------------------- */
+            fieldObjectFit: "fill",
 
-    for(
-        const object of objects
-    ){
+            fieldWidth: 0,
 
-        const imageFilename =
-    await addImage(
-        object.imageUrl
-    );
+            fieldHeight: 0,
+
+            displayGrid: false,
+
+            gridSize: 1,
+
+            markers: {},
+
+            text: "",
+
+            locked: false,
+
+            order:
+                scenes.indexOf(sceneData)
+
+        };
 
 
-const x =
-    (object.x + object.width / 2 - 960) / 24;
+        /*
+         * 這個場景自己的物件
+         */
 
-const y =
-    (object.y + object.height / 2 - 540) / 24;
+        for (
+            const object
+            of sceneData.objects
+        ) {
 
-const width =
-    object.width / 24;
+            const imageFilename =
+                await addImage(
+                    object.imageUrl
+                );
 
-const height =
-    object.height / 24;
 
-const markerId =
-    object.id ||
-    crypto.randomUUID()
-        .replace(/-/g, "")
-        .slice(0, 12);
+            const x =
+                (
+                    object.x +
+                    object.width / 2 -
+                    960
+                ) / 24;
 
-scene.markers[markerId] = {
-    x: x,
-    y: y,
-    z: object.z || 0,
-    width: width,
-    height: height,
-    locked: false,
-    freezed: false,
-    text: "",
-    imageUrl: imageFilename,
-    clickAction: null
-};
+
+            const y =
+                (
+                    object.y +
+                    object.height / 2 -
+                    540
+                ) / 24;
+
+
+            const width =
+                object.width / 24;
+
+
+            const height =
+                object.height / 24;
+
+
+            const markerId =
+                object.id ||
+                crypto.randomUUID()
+                    .replace(/-/g, "")
+                    .slice(0, 12);
+
+
+            scene.markers[markerId] = {
+
+                x: x,
+
+                y: y,
+
+                z: object.z || 0,
+
+                width: width,
+
+                height: height,
+
+                locked: false,
+
+                freezed: false,
+
+                text: "",
+
+                imageUrl:
+                    imageFilename,
+
+                clickAction: null
+
+            };
+
+        }
+
+
+        sceneEntities[sceneData.id] =
+            scene;
 
     }
 
 
+    /*
+     * 最終 Room JSON
+     */
+
+    const data = {
+
+        meta: {
+
+            version: "1.1.0"
+
+        },
+
+        entities: {
+
+            room: room,
+
+            items: {},
+
+            decks: {},
+
+            notes: {},
+
+            characters: {},
+
+            effects: {},
+
+            scenes:
+                sceneEntities,
+
+            savedatas: {},
+
+            snapshots: {}
+
+        },
+
+        resources:
+            resources
+
+    };
+
+
     return {
 
-        data,
+        data: data,
 
-        imageFiles
+        imageFiles: imageFiles
 
     };
 
@@ -2283,10 +2652,10 @@ const sceneHeight = 1080;
         背景
     */
 
-    if (backgroundData) {
+    if (getBackgroundData()) {
 
         const img =
-            await loadImage(backgroundData);
+            await loadImage(getBackgroundData());
 
         ctx.drawImage(
             img,
@@ -2304,7 +2673,7 @@ const sceneHeight = 1080;
     */
 
     const sorted =
-        [...objects].sort(
+        [...getObjects()].sort(
             (a,b) => a.z - b.z
         );
 
@@ -2352,21 +2721,22 @@ const sceneHeight = 1080;
         前景
     */
 
-    if (foregroundData) {
+if (getForegroundData()) {
 
-        const img =
-            await loadImage(foregroundData);
-
-        ctx.drawImage(
-            img,
-            0,
-            0,
-            sceneWidth,
-            sceneHeight
+    const img =
+        await loadImage(
+            getForegroundData()
         );
 
-    }
+    ctx.drawImage(
+        img,
+        0,
+        0,
+        sceneWidth,
+        sceneHeight
+    );
 
+}
 
     canvas.toBlob(function(blob) {
 
@@ -2412,6 +2782,22 @@ function loadImage(src) {
 /* ==========================================
    初始化
 ========================================== */
+
+if (scenes.length === 0) {
+
+    const firstScene =
+        createScene("場景 1");
+
+    scenes.push(firstScene);
+
+    currentSceneId =
+        firstScene.id;
+
+}
+
+renderSceneList();
+
+loadCurrentScene();
 
 render();
 
@@ -2722,14 +3108,14 @@ document
    空白區域拖曳
 --------------------------------------------------------- */
 
-scene.addEventListener(
+sceneCanvas.addEventListener(
     "mousedown",
     function(e){
 
         /*
          * 只有點到 Scene 空白處
          */
-        if(e.target !== scene) return;
+        if(e.target !== sceneCanvas) return;
 
         if(e.button !== 0) return;
 
@@ -2741,8 +3127,8 @@ scene.addEventListener(
         viewStartX = viewX;
         viewStartY = viewY;
 
-        scene.style.cursor =
-            "grabbing";
+        sceneCanvas.style.cursor =
+    "grabbing";
 
         e.preventDefault();
 
@@ -2788,7 +3174,7 @@ document.addEventListener(
 
         viewDragging = false;
 
-        scene.style.cursor = "";
+        sceneCanvas.style.cursor = "";
 
     }
 );
