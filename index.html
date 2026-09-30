@@ -415,7 +415,7 @@ button:active {
 <h3>新增元件</h3>
 
 <div class="row">
-    <button id="addImageObject">新增畫面元件</button>
+    <button id="addImageObject">畫面元件</button>
     <button id="addSceneMarker">場景標誌元件</button>
 </div>
 
@@ -453,9 +453,11 @@ button:active {
     style="display:none;"
 >
 
-    <h3>物件列表</h3>
+    <h3>場景元件</h3>
+<div id="sceneObjectList"></div>
 
-    <div id="objectList"></div>
+<h3>地形標誌元件</h3>
+<div id="markerObjectList"></div>
 
     <h3>選取物件</h3>
 
@@ -2249,38 +2251,74 @@ function render() {
 
 function updateList() {
 
-    objectList.innerHTML = "";
+    const sceneObjectList =
+        document.getElementById("sceneObjectList");
 
-    const sorted = [...getObjects()].sort((a,b) => b.z - a.z);
+    const markerObjectList =
+        document.getElementById("markerObjectList");
 
-    sorted.forEach(object => {
+    sceneObjectList.innerHTML = "";
+    markerObjectList.innerHTML = "";
 
-        const div = document.createElement("div");
+    // 場景元件
+    [...sharedObjects]
+        .sort((a, b) => b.z - a.z)
+        .forEach(object => {
 
-        div.className = "object-item";
+            const div =
+                document.createElement("div");
 
-        if (object.id === selectedId) {
+            div.className = "object-item";
 
-            div.classList.add("selected");
+            if (object.id === selectedId) {
+                div.classList.add("selected");
+            }
 
-        }
+            div.textContent =
+                object.name +
+                " [Z:" +
+                object.z +
+                "]";
 
-        div.textContent =
-            object.name +
-            "  [Z:" +
-            object.z +
-            "]";
+            div.addEventListener("click", function() {
+                selectObject(object.id);
+            });
 
-        div.addEventListener("click", function() {
-
-            selectObject(object.id);
-
+            sceneObjectList.appendChild(div);
         });
 
-        objectList.appendChild(div);
 
-    });
+    // 地形標誌元件
+    const scene = getCurrentScene();
 
+    if (!scene) return;
+
+    [...scene.objects]
+        .filter(object => object.type === "sceneMarker")
+        .sort((a, b) => b.z - a.z)
+        .forEach(object => {
+
+            const div =
+                document.createElement("div");
+
+            div.className = "object-item";
+
+            if (object.id === selectedId) {
+                div.classList.add("selected");
+            }
+
+            div.textContent =
+                object.name +
+                " [Z:" +
+                object.z +
+                "]";
+
+            div.addEventListener("click", function() {
+                selectObject(object.id);
+            });
+
+            markerObjectList.appendChild(div);
+        });
 }
 
 
