@@ -2261,46 +2261,52 @@ markerImageInput.addEventListener("change", async function(e) {
 
         const object = {
 
-            id:
-                createId(),
+    id:
+        createId(),
 
-            name:
-                file.name,
+    name:
+        file.name,
 
-            imageUrl:
-                prepared.dataURL,
+    imageUrl:
+        prepared.dataURL,
 
-            x:
-                100,
+    x:
+        100,
 
-            y:
-                100,
+    y:
+        100,
 
-            z:
-                1,
+    z:
+        1,
 
-            angle:
-                0,
+    angle:
+        0,
 
-            width:
-                img.naturalWidth,
+    width:
+        img.naturalWidth,
 
-            height:
-                img.naturalHeight,
+    height:
+        img.naturalHeight,
 
-            opacity:
-                1,
+    opacity:
+        1,
 
-            flipX:
-                false,
+    flipX:
+        false,
 
-            flipY:
-                false,
+    flipY:
+        false,
 
-            type:
-                "sceneMarker"
+    visible:
+        true,
 
-        };
+    locked:
+        false,
+
+    type:
+        "sceneMarker"
+
+};
 
 
         scene.objects.push(object);
@@ -2625,16 +2631,12 @@ function render() {
 
 sharedObjects.forEach(object => {
 
-    if (object.type === "sceneMarker") {
-        return;
-    }
-
     if (typeof object.visible !== "boolean") {
         object.visible = true;
     }
 
     if (typeof object.locked !== "boolean") {
-        object.locked = true;
+        object.locked = false;
     }
 
 });
@@ -3132,16 +3134,13 @@ function startResize(e) {
     if (!object) return;
 
 
-    /*
-     * 鎖定物件不能縮放
-     */
+/*
+ * 所有物件鎖定後都不能縮放
+ */
 
-    if (
-        object.type !== "sceneMarker" &&
-        object.locked === true
-    ) {
-        return;
-    }
+if (object.locked === true) {
+    return;
+}
 
 
     resizing = true;
@@ -3858,64 +3857,74 @@ function updateObjectQuickToolbar() {
         object.type !== "sceneMarker";
 
 
+    /* ==========================================
+   可視按鈕
+   → 只有一般場景元件顯示
+========================================== */
+
+if (visibilityButton) {
+
+    visibilityButton.style.display =
+        isSceneObject
+            ? "flex"
+            : "none";
+
+}
+
+
+/* ==========================================
+   鎖定按鈕
+   → 一般場景元件 + 地形標記都顯示
+========================================== */
+
+if (lockButton) {
+
+    lockButton.style.display =
+        "flex";
+
+}
+
+/* ==========================================
+   一般場景元件
+========================================== */
+
+if (isSceneObject) {
+
     if (visibilityButton) {
 
-        visibilityButton.style.display =
-            isSceneObject
-                ? "flex"
-                : "none";
+        visibilityButton.textContent =
+            object.visible !== false
+                ? "👁"
+                : "🚫";
+
+        visibilityButton.title =
+            object.visible !== false
+                ? "隱藏元件"
+                : "顯示元件";
 
     }
 
-
-    if (lockButton) {
-
-        lockButton.style.display =
-            isSceneObject
-                ? "flex"
-                : "none";
-
-    }
+}
 
 
-    /* ==========================================
-       畫面元件
-       → 更新按鈕狀態
-    ========================================== */
+/* ==========================================
+   所有物件
+   → 一般場景元件 + 地形標記
+========================================== */
 
-    if (isSceneObject) {
+if (lockButton) {
 
-        if (visibilityButton) {
+    lockButton.textContent =
+        object.locked === true
+            ? "🔒"
+            : "🔓";
 
-            visibilityButton.textContent =
-                object.visible !== false
-                    ? "👁"
-                    : "🚫";
+    lockButton.title =
+        object.locked === true
+            ? "解除鎖定"
+            : "鎖定元件";
 
-            visibilityButton.title =
-                object.visible !== false
-                    ? "隱藏元件"
-                    : "顯示元件";
-
-        }
-
-
-        if (lockButton) {
-
-            lockButton.textContent =
-                object.locked === true
-                    ? "🔒"
-                    : "🔓";
-
-            lockButton.title =
-                object.locked === true
-                    ? "解除鎖定"
-                    : "鎖定元件";
-
-        }
-
-    }
-
+}
 
     /* ==========================================
        顯示工具列
@@ -4066,11 +4075,6 @@ if (action === "toggleVisible") {
 ========================================== */
 
 if (action === "toggleLocked") {
-
-    /* 地形標記不提供此功能 */
-    if (object.type === "sceneMarker") {
-        return;
-    }
 
     object.locked =
         !object.locked;
@@ -4744,56 +4748,157 @@ function updateList() {
         });
 
 
-    /* ==========================================
-       地形標誌元件
-       → 不放 👁 / 🔒
-    ========================================== */
+/* ==========================================
+   地形標誌元件
+   → 有 🔒
+========================================== */
 
-    const scene =
-        getCurrentScene();
+const scene =
+    getCurrentScene();
 
-    if (!scene) return;
+if (!scene) return;
 
 
-    [...scene.objects]
-        .filter(
-            object =>
-                object.type === "sceneMarker"
-        )
-        .sort(
-            (a, b) => b.z - a.z
-        )
-        .forEach(object => {
+[...scene.objects]
+    .filter(
+        object =>
+            object.type === "sceneMarker"
+    )
+    .sort(
+        (a, b) => b.z - a.z
+    )
+    .forEach(object => {
 
-            const div =
-                document.createElement("div");
+        /* 舊資料沒有 locked 時，
+           預設為解鎖 */
+        if (
+            typeof object.locked !== "boolean"
+        ) {
+            object.locked = false;
+        }
 
-            div.className =
-                "object-item";
 
-            if (object.id === selectedId) {
-                div.classList.add("selected");
-            }
+        const div =
+            document.createElement("div");
 
-            div.textContent =
-                object.name +
-                " [Z:" +
-                object.z +
-                "]";
+        div.className =
+            "object-item";
 
-            div.addEventListener(
-                "click",
-                function() {
 
-                    selectObject(object.id);
+        if (object.id === selectedId) {
 
-                }
+            div.classList.add(
+                "selected"
             );
 
-            markerObjectList.appendChild(div);
+        }
 
-        });
 
+        /* ==============================
+           名稱
+        ============================== */
+
+        const nameSpan =
+            document.createElement("span");
+
+        nameSpan.className =
+            "object-item-name";
+
+        nameSpan.textContent =
+            object.name +
+            " [Z:" +
+            object.z +
+            "]";
+
+
+        /* ==============================
+           右側按鈕
+        ============================== */
+
+        const actions =
+            document.createElement("div");
+
+        actions.className =
+            "object-item-actions";
+
+
+        /* ==============================
+           🔒 鎖定 / 解鎖
+        ============================== */
+
+        const lockButton =
+            document.createElement("button");
+
+        lockButton.type =
+            "button";
+
+        lockButton.className =
+            "object-state-button";
+
+        lockButton.title =
+            object.locked === true
+                ? "解除鎖定"
+                : "鎖定元件";
+
+        lockButton.textContent =
+            object.locked === true
+                ? "🔒"
+                : "🔓";
+
+
+        lockButton.addEventListener(
+            "click",
+            function(e) {
+
+                e.stopPropagation();
+
+                object.locked =
+                    !object.locked;
+
+                render();
+
+            }
+        );
+
+
+        /* ==============================
+           組裝
+        ============================== */
+
+        actions.appendChild(
+            lockButton
+        );
+
+        div.appendChild(
+            nameSpan
+        );
+
+        div.appendChild(
+            actions
+        );
+
+
+        /* ==============================
+           點名稱 / 空白區選取
+        ============================== */
+
+        div.addEventListener(
+            "click",
+            function() {
+
+                selectObject(
+                    object.id
+                );
+
+            }
+        );
+
+
+        markerObjectList.appendChild(
+            div
+        );
+
+    });
 }
 
 /* ==========================================
@@ -5216,16 +5321,11 @@ function startDrag(e) {
 
 
     /*
-     * 畫面元件鎖定後不可拖曳
-     *
-     * 地形標誌仍然可以拖曳
-     */
-    if (
-        object.type !== "sceneMarker" &&
-        object.locked === true
-    ) {
-        return;
-    }
+ * 所有物件鎖定後都不能拖曳
+ */
+if (object.locked === true) {
+    return;
+}
 
 
     dragging = true;
