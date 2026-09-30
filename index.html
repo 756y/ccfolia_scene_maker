@@ -1,588 +1,562 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cocofolia 場景建置器</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cocofolia 場景建置器</title>
 
-<style>
-* {
-    box-sizing: border-box;
-}
+    <style>
+        * {
+            box-sizing: border-box;
+        }
 
-body {
-    margin: 0;
-    height: 100vh;
-    display: flex;
-    font-family: Arial, "Microsoft JhengHei", sans-serif;
-    background: #222;
-    color: #eee;
-    overflow: hidden;
-}
+        body {
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            font-family: Arial, "Microsoft JhengHei", sans-serif;
+            background: #222;
+            color: #eee;
+            overflow: hidden;
+        }
 
-/* 左側工具欄 */
-#sidebar {
-    width: 300px;
-    background: #2d2d2d;
-    border-right: 1px solid #444;
-    padding: 15px;
-    overflow-y: auto;
-}
+        /* 左側工具欄 */
+        #sidebar {
+            width: 300px;
+            background: #2d2d2d;
+            border-right: 1px solid #444;
+            padding: 15px;
+            overflow-y: auto;
+        }
 
-h2 {
-    margin: 0 0 15px;
-    font-size: 20px;
-}
+        h2 {
+            margin: 0 0 15px;
+            font-size: 20px;
+        }
 
-h3 {
-    margin: 18px 0 8px;
-    font-size: 14px;
-    color: #aaa;
-}
+        h3 {
+            margin: 18px 0 8px;
+            font-size: 14px;
+            color: #aaa;
+        }
 
-button,
-input {
-    font-family: inherit;
-}
+        button,
+        input {
+            font-family: inherit;
+        }
 
-button {
-    background: #444;
-    color: white;
-    border: 1px solid #666;
-    border-radius: 5px;
-    padding: 7px 10px;
-    cursor: pointer;
-}
+        button {
+            background: #444;
+            color: white;
+            border: 1px solid #666;
+            border-radius: 5px;
+            padding: 7px 10px;
+            cursor: pointer;
+        }
 
-button:hover {
-    background: #555;
-}
+        button:hover {
+            background: #555;
+        }
 
-button:active {
-    background: #666;
-}
+        button:active {
+            background: #666;
+        }
 
-.full {
-    width: 100%;
-}
+        .full {
+            width: 100%;
+        }
 
-.row {
-    display: flex;
-    gap: 6px;
-    margin-bottom: 6px;
-}
+        .row {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 6px;
+        }
 
-.row button {
-    flex: 1;
-}
+        .row button {
+            flex: 1;
+        }
 
-.control {
-    margin-bottom: 8px;
-}
+        .control {
+            margin-bottom: 8px;
+        }
 
-.control label {
-    display: block;
-    font-size: 12px;
-    color: #aaa;
-    margin-bottom: 3px;
-}
+        .control label {
+            display: block;
+            font-size: 12px;
+            color: #aaa;
+            margin-bottom: 3px;
+        }
 
-.control input {
-    width: 100%;
-    background: #1f1f1f;
-    color: white;
-    border: 1px solid #555;
-    border-radius: 4px;
-    padding: 6px;
-}
+        .control input {
+            width: 100%;
+            background: #1f1f1f;
+            color: white;
+            border: 1px solid #555;
+            border-radius: 4px;
+            padding: 6px;
+        }
 
-.control input[type="range"] {
-    padding: 0;
-}
+        .control input[type="range"] {
+            padding: 0;
+        }
 
-#objectList {
-    border: 1px solid #444;
-    background: #222;
-    max-height: 180px;
-    overflow-y: auto;
-}
+        #objectList {
+            border: 1px solid #444;
+            background: #222;
+            max-height: 180px;
+            overflow-y: auto;
+        }
 
-.object-item {
-    padding: 8px;
-    border-bottom: 1px solid #444;
-    cursor: pointer;
-    font-size: 13px;
-}
+        .object-item {
+            padding: 8px;
+            border-bottom: 1px solid #444;
+            cursor: pointer;
+            font-size: 13px;
+        }
 
-.object-item:hover {
-    background: #333;
-}
+        .object-item:hover {
+            background: #333;
+        }
 
-.object-item.selected {
-    background: #555;
-}
+        .object-item.selected {
+            background: #555;
+        }
 
-#sceneList {
-    border: 1px solid #444;
-    background: #222;
-    max-height: 180px;
-    overflow-y: auto;
-    margin-bottom: 8px;
-}
+        #sceneList {
+            border: 1px solid #444;
+            background: #222;
+            max-height: 180px;
+            overflow-y: auto;
+            margin-bottom: 8px;
+        }
 
-.scene-list-item {
-    padding: 8px;
-    border-bottom: 1px solid #444;
-    cursor: pointer;
-    font-size: 13px;
-}
+        .scene-list-item {
+            padding: 8px;
+            border-bottom: 1px solid #444;
+            cursor: pointer;
+            font-size: 13px;
+        }
 
-.scene-list-item:hover {
-    background: #333;
-}
+        .scene-list-item:hover {
+            background: #333;
+        }
 
-.scene-list-item.selected {
-    background: #555;
-}
+        .scene-list-item.selected {
+            background: #555;
+        }
 
-#sceneEditor {
-    margin-top: 8px;
-}
+        #sceneEditor {
+            margin-top: 8px;
+        }
 
-#opacityValue {
-    font-size: 12px;
-    color: #aaa;
-}
+        #opacityValue {
+            font-size: 12px;
+            color: #aaa;
+        }
 
-.control select {
-    width: 100%;
-    background: #1f1f1f;
-    color: white;
-    border: 1px solid #555;
-    border-radius: 4px;
-    padding: 6px;
-}
+        .control select {
+            width: 100%;
+            background: #1f1f1f;
+            color: white;
+            border: 1px solid #555;
+            border-radius: 4px;
+            padding: 6px;
+        }
 
-/* =========================================================
+        /* =========================================================
    工作區
 ========================================================= */
 
-#workspace {
-    flex: 1;
-    position: relative;
+        #workspace {
+            flex: 1;
+            position: relative;
 
-    /* 工作區本身不能被 1920×1080 畫布撐開 */
-    overflow: hidden;
+            /* 工作區本身不能被 1920×1080 畫布撐開 */
+            overflow: hidden;
 
-    background:
-        linear-gradient(45deg, #292929 25%, transparent 25%),
-        linear-gradient(-45deg, #292929 25%, transparent 25%),
-        linear-gradient(45deg, transparent 75%, #292929 75%),
-        linear-gradient(-45deg, transparent 75%, #292929 75%);
+            background:
+                linear-gradient(45deg, #292929 25%, transparent 25%),
+                linear-gradient(-45deg, #292929 25%, transparent 25%),
+                linear-gradient(45deg, transparent 75%, #292929 75%),
+                linear-gradient(-45deg, transparent 75%, #292929 75%);
 
-    background-size: 30px 30px;
-    background-position:
-        0 0,
-        0 15px,
-        15px -15px,
-        -15px 0;
-}
+            background-size: 30px 30px;
+            background-position:
+                0 0,
+                0 15px,
+                15px -15px,
+                -15px 0;
+        }
 
-#viewportControls {
-    position: absolute;
+        #viewportControls {
+            position: absolute;
 
-    right: 16px;
-    bottom: 16px;
+            right: 16px;
+            bottom: 16px;
 
-    z-index: 1000;
+            z-index: 1000;
 
-    display: flex;
-    align-items: center;
-    gap: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
 
-    padding: 7px;
+            padding: 7px;
 
-    background: rgba(30, 30, 30, 0.92);
+            background: rgba(30, 30, 30, 0.92);
 
-    border: 1px solid #555;
-    border-radius: 8px;
+            border: 1px solid #555;
+            border-radius: 8px;
 
-    box-shadow: 0 4px 16px rgba(0,0,0,0.35);
-}
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+        }
 
-#viewportControls button {
-    height: 30px;
-    min-width: 30px;
+        #viewportControls button {
+            height: 30px;
+            min-width: 30px;
 
-    padding: 0 8px;
+            padding: 0 8px;
 
-    background: #3a3a3a;
-    color: #eee;
+            background: #3a3a3a;
+            color: #eee;
 
-    border: 1px solid #666;
-    border-radius: 5px;
+            border: 1px solid #666;
+            border-radius: 5px;
 
-    cursor: pointer;
-}
+            cursor: pointer;
+        }
 
-#viewportControls button:hover {
-    background: #4a4a4a;
-}
+        #viewportControls button:hover {
+            background: #4a4a4a;
+        }
 
-#zoomValue {
-    min-width: 50px;
+        #zoomValue {
+            min-width: 50px;
 
-    text-align: center;
+            text-align: center;
 
-    font-size: 12px;
-    color: #ddd;
-}
+            font-size: 12px;
+            color: #ddd;
+        }
 
-/* =========================================================
+        /* =========================================================
    固定 1920 × 1080 場景畫布
 ========================================================= */
 
-#scene {
-    position: absolute;
+        #scene {
+            position: absolute;
 
-    width: 1920px;
-    height: 1080px;
+            width: 1920px;
+            height: 1080px;
 
-    left: 50%;
-    top: 50%;
+            left: 50%;
+            top: 50%;
 
-    margin-left: -960px;
-    margin-top: -540px;
+            margin-left: -960px;
+            margin-top: -540px;
 
-    background: #111;
-    overflow: hidden;
+            background: #111;
+            overflow: hidden;
 
-    transform-origin: center center;
+            transform-origin: center center;
 
-    box-shadow: 0 0 20px #000;
-}
+            box-shadow: 0 0 20px #000;
+        }
 
-/* =========================================================
+        /* =========================================================
    背景
 ========================================================= */
 
-#background {
-    position: absolute;
+        #background {
+            position: absolute;
 
-    left: 0;
-    top: 0;
+            left: 0;
+            top: 0;
 
-    width: 1920px;
-    height: 1080px;
+            width: 1920px;
+            height: 1080px;
 
-    object-fit: fill;
+            object-fit: fill;
 
-    pointer-events: none;
+            pointer-events: none;
 
-    /* 背景永遠在最下面 */
-    z-index: -100;
-}
+            /* 背景永遠在最下面 */
+            z-index: -100;
+        }
 
 
-/* =========================================================
+        /* =========================================================
    一般圖片物件
 ========================================================= */
 
-#objects {
-    position: absolute;
+        #objects {
+            position: absolute;
 
-    left: 0;
-    top: 0;
+            left: 0;
+            top: 0;
 
-    width: 1920px;
-    height: 1080px;
+            width: 1920px;
+            height: 1080px;
 
-    /* 一般物件 / 場景標誌從 Layer 1 開始 */
-    z-index: 1;
+            /* 一般物件 / 場景標誌從 Layer 1 開始 */
+            z-index: 1;
 
-    pointer-events: none;
-}
+            pointer-events: none;
+        }
 
-.scene-object {
-    pointer-events: auto;
-}
+        .scene-object {
+            pointer-events: auto;
+        }
 
 
-/* =========================================================
+        /* =========================================================
    前景
 ========================================================= */
 
-#foreground {
-    position: absolute;
+        #foreground {
+            position: absolute;
 
-    left: 480px;
-    top: 180px;
+            left: 480px;
+            top: 180px;
 
-    width: 960px;
-    height: 720px;
+            width: 960px;
+            height: 720px;
 
-    object-fit: fill;
+            object-fit: fill;
 
-    object-position: center center;
+            object-position: center center;
 
-    pointer-events: none;
+            pointer-events: none;
 
-    z-index: 0;
-}
+            z-index: 0;
+        }
 
 
-/* =========================================================
+        /* =========================================================
    24 × 24 px 格線
 ========================================================= */
 
-#sceneGrid {
-    position: absolute;
+        #sceneGrid {
+            position: absolute;
 
-    left: 0;
-    top: 0;
+            left: 0;
+            top: 0;
 
-    width: 1920px;
-    height: 1080px;
+            width: 1920px;
+            height: 1080px;
 
-    pointer-events: none;
+            pointer-events: none;
 
-    z-index: 100;
+            z-index: 100;
 
-    background-image:
-        linear-gradient(
-            rgba(255,255,255,0.12) 1px,
-            transparent 1px
-        ),
-        linear-gradient(
-            90deg,
-            rgba(255,255,255,0.12) 1px,
-            transparent 1px
-        );
+            background-image:
+                linear-gradient(rgba(255, 255, 255, 0.12) 1px,
+                    transparent 1px),
+                linear-gradient(90deg,
+                    rgba(255, 255, 255, 0.12) 1px,
+                    transparent 1px);
 
-    background-size: 24px 24px;
-}
+            background-size: 24px 24px;
 
-/* 圖片物件 */
-.scene-object {
-    position: absolute;
-    transform-origin: center center;
-    user-select: none;
-    cursor: move;
-}
+            /*
+     * 格線以 Scene 正中央 (960, 540)
+     * 作為真正的座標原點。
+     *
+     * X：
+     * 960 ÷ 24 = 40
+     * 所以 X 不需要偏移。
+     *
+     * Y：
+     * 540 ÷ 24 = 22.5
+     * 所以向下偏移 12px，
+     * 讓中央 540px 正好落在格線上。
+     */
+            background-position: 0 12px;
+        }
 
-.scene-object.selected {
-    outline: 2px solid #4da6ff;
-}
+        /* 圖片物件 */
+        .scene-object {
+            position: absolute;
+            transform-origin: center center;
+            user-select: none;
+            cursor: move;
+        }
 
-#dropHint {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    color: #777;
-    pointer-events: none;
-    text-align: center;
-}
-</style>
+        .scene-object.selected {
+            outline: 2px solid #4da6ff;
+        }
+
+        #dropHint {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            color: #777;
+            pointer-events: none;
+            text-align: center;
+        }
+    </style>
 </head>
 
 <body>
 
-<!-- =========================
+    <!-- =========================
      左側控制面板
 ========================= -->
-<div id="sidebar">
+    <div id="sidebar">
 
-    <h2>Cocofolia 場景建置器</h2>
+        <h2>Cocofolia 場景建置器</h2>
 
-    <h3>圖片</h3>
+        <h3>圖片</h3>
 
-<h3>新增元件</h3>
+        <h3>新增元件</h3>
 
-<div class="row">
-    <button id="addImageObject">新增畫面元件</button>
-    <button id="addSceneMarker">場景標誌元件</button>
-</div>
-
-<div class="row">
-    <button id="setBackground">設定背景</button>
-    <button id="setForeground">設定前景</button>
-</div>
-
-<!-- 隱藏的圖片選擇器 -->
-<input
-    type="file"
-    id="objectImageInput"
-    accept="image/*"
-    style="display:none;"
->
-
-<input
-    type="file"
-    id="markerImageInput"
-    accept="image/*"
-    style="display:none;"
->
-
-<input
-    type="file"
-    id="backgroundImageInput"
-    accept="image/*"
-    style="display:none;"
->
-
-<input
-    type="file"
-    id="foregroundImageInput"
-    accept="image/*"
-    style="display:none;"
->
-
-    <h3>物件列表</h3>
-
-    <div id="objectList"></div>
-
-    <h3>選取物件</h3>
-
-    <div id="noSelection">
-        尚未選取物件
-    </div>
-
-    <div id="editor" style="display:none;">
-
-        <div class="control">
-            <label>名稱</label>
-            <input id="nameInput" type="text">
-        </div>
-
-        <div class="control">
-            <label>X</label>
-            <input id="xInput" type="number">
-        </div>
-
-        <div class="control">
-            <label>Y</label>
-            <input id="yInput" type="number">
-        </div>
-
-        <div class="control">
-            <label>寬度</label>
-            <input id="widthInput" type="number">
-        </div>
-
-        <div class="control">
-            <label>高度</label>
-            <input id="heightInput" type="number">
-        </div>
-
-        <div class="control">
-            <label>旋轉角度</label>
-            <input id="angleInput" type="number">
-        </div>
-
-        <div class="control">
-            <label>
-                透明度：
-                <span id="opacityValue">100%</span>
-            </label>
-
-            <input
-                id="opacityInput"
-                type="range"
-                min="0"
-                max="100"
-                value="100"
-            >
+        <div class="row">
+            <button id="addImageObject">新增畫面元件</button>
+            <button id="addSceneMarker">場景標誌元件</button>
         </div>
 
         <div class="row">
-            <button id="flipX">水平鏡像</button>
-            <button id="flipY">垂直鏡像</button>
+            <button id="setBackground">設定背景</button>
+            <button id="setForeground">設定前景</button>
         </div>
+
+        <!-- 隱藏的圖片選擇器 -->
+        <input type="file" id="objectImageInput" accept="image/*" style="display:none;">
+
+        <input type="file" id="markerImageInput" accept="image/*" style="display:none;">
+
+        <input type="file" id="backgroundImageInput" accept="image/*" style="display:none;">
+
+        <input type="file" id="foregroundImageInput" accept="image/*" style="display:none;">
+
+        <h3>物件列表</h3>
+
+        <div id="objectList"></div>
+
+        <h3>選取物件</h3>
+
+        <div id="noSelection">
+            尚未選取物件
+        </div>
+
+        <div id="editor" style="display:none;">
+
+            <div class="control">
+                <label>名稱</label>
+                <input id="nameInput" type="text">
+            </div>
+
+            <div class="control">
+                <label>X</label>
+                <input id="xInput" type="number">
+            </div>
+
+            <div class="control">
+                <label>Y</label>
+                <input id="yInput" type="number">
+            </div>
+
+            <div class="control">
+                <label>寬度</label>
+                <input id="widthInput" type="number">
+            </div>
+
+            <div class="control">
+                <label>高度</label>
+                <input id="heightInput" type="number">
+            </div>
+
+            <div class="control">
+                <label>旋轉角度</label>
+                <input id="angleInput" type="number">
+            </div>
+
+            <div class="control">
+                <label>
+                    透明度：
+                    <span id="opacityValue">100%</span>
+                </label>
+
+                <input id="opacityInput" type="range" min="0" max="100" value="100">
+            </div>
+
+            <div class="row">
+                <button id="flipX">水平鏡像</button>
+                <button id="flipY">垂直鏡像</button>
+            </div>
+
+            <div class="row">
+                <button id="moveUp">圖層 ↑</button>
+                <button id="moveDown">圖層 ↓</button>
+            </div>
+
+            <div class="row">
+                <button id="duplicate">複製物件</button>
+                <button id="delete">刪除物件</button>
+            </div>
+
+        </div>
+
+        <h3>場景列表</h3>
+
+        <div id="sceneList"></div>
 
         <div class="row">
-            <button id="moveUp">圖層 ↑</button>
-            <button id="moveDown">圖層 ↓</button>
+            <button id="addScene">＋新增場景</button>
+            <button id="deleteScene">刪除場景</button>
         </div>
 
-        <div class="row">
-            <button id="duplicate">複製物件</button>
-            <button id="delete">刪除物件</button>
-        </div>
+        <div id="sceneEditor">
 
-    </div>
+            <div class="control">
+                <label>場景名稱</label>
+                <input id="sceneNameInput" type="text" placeholder="例如：教室、走廊、餐廳">
+            </div>
 
-<h3>場景列表</h3>
-
-<div id="sceneList"></div>
-
-<div class="row">
-    <button id="addScene">＋新增場景</button>
-    <button id="deleteScene">刪除場景</button>
-</div>
-
-<div id="sceneEditor">
-
-    <div class="control">
-        <label>場景名稱</label>
-        <input
-            id="sceneNameInput"
-            type="text"
-            placeholder="例如：教室、走廊、餐廳"
-        >
-    </div>
-
-    <!-- =========================
+            <!-- =========================
          前景尺寸
     ========================== -->
 
-    <div class="control">
-        <label>前景寬度</label>
-        <input
-            id="foregroundWidthInput"
-            type="number"
-            min="1"
-            step="1"
-        >
-    </div>
+            <div class="control">
+                <label>前景寬度</label>
+                <input id="foregroundWidthInput" type="number" min="1" step="1">
+            </div>
 
-    <div class="control">
-        <label>前景高度</label>
-        <input
-            id="foregroundHeightInput"
-            type="number"
-            min="1"
-            step="1"
-        >
-    </div>
+            <div class="control">
+                <label>前景高度</label>
+                <input id="foregroundHeightInput" type="number" min="1" step="1">
+            </div>
 
-    <div class="control">
-        <label>
-            <input
-                id="foregroundFitInput"
-                type="checkbox"
-            >
-            圖片符合前景尺寸
-        </label>
-    </div>
+            <div class="control">
+                <label>
+                    <input id="foregroundFitInput" type="checkbox">
+                    圖片符合前景尺寸
+                </label>
+            </div>
 
-    <div class="row">
-        <button id="clearBackground">清除背景</button>
-        <button id="clearForeground">清除前景</button>
-    </div>
+            <div class="control">
+                <label>
+                    <input id="alignWithGridInput" type="checkbox">
+                    對齊格線（拖曳時自動吸附）
+                </label>
+            </div>
 
-</div>
+            <div class="row">
+                <button id="clearBackground">清除背景</button>
+                <button id="clearForeground">清除前景</button>
+            </div>
 
-    <h3>輸出</h3>
+        </div>
 
-<div class="row">
-    <button id="exportZIP">下載 Room ZIP</button>
-    <button id="exportPNG">輸出 PNG</button>
-</div>
+        <h3>輸出</h3>
 
-<div
-    id="zipStatus"
-    style="
+        <div class="row">
+            <button id="exportZIP">下載 Room ZIP</button>
+            <button id="exportPNG">輸出 PNG</button>
+        </div>
+
+        <div id="zipStatus" style="
         margin-top:8px;
         padding:8px;
         border:1px solid #444;
@@ -592,4013 +566,4244 @@ button:active {
         font-size:12px;
         white-space:pre-wrap;
         word-break:break-all;
-    "
->
-    尚未建立 Room ZIP。
-</div>
+    ">
+            尚未建立 Room ZIP。
+        </div>
 
-</div>
+    </div>
 
 
-<!-- =========================
+    <!-- =========================
      工作區
 ========================= -->
-<div id="workspace">
+    <div id="workspace">
 
-    <div id="viewportControls">
+        <div id="viewportControls">
 
-        <button id="zoomOut">−</button>
+            <button id="zoomOut">−</button>
 
-        <span id="zoomValue">100%</span>
+            <span id="zoomValue">100%</span>
 
-        <button id="zoomIn">＋</button>
+            <button id="zoomIn">＋</button>
 
-        <button id="fitCanvas">適合畫布</button>
+            <button id="fitCanvas">適合畫布</button>
 
-        <button id="resetView">100%</button>
+            <button id="resetView">100%</button>
+
+        </div>
+
+        <div id="scene">
+
+            <div id="dropHint">
+                請匯入圖片
+            </div>
+
+            <!-- 背景 -->
+            <img id="background">
+
+            <!-- 一般圖片物件 -->
+            <div id="objects"></div>
+
+            <!-- 前景 -->
+            <img id="foreground">
+
+            <!-- 24 × 24 px 格線 -->
+            <div id="sceneGrid"></div>
+
+        </div>
 
     </div>
 
-    <div id="scene">
 
-    <div id="dropHint">
-        請匯入圖片
-    </div>
+    <script>
 
-    <!-- 背景 -->
-    <img id="background">
+        /* ==========================================
+           資料
+        ========================================== */
 
-    <!-- 一般圖片物件 -->
-    <div id="objects"></div>
+        /* ==========================================
+           場景資料
+        ========================================== */
 
-    <!-- 前景 -->
-    <img id="foreground">
+        const scenes = [];
 
-    <!-- 24 × 24 px 格線 -->
-    <div id="sceneGrid"></div>
+        /*
+         * =========================================================
+         * 全場景共用的「畫面元件」
+         *
+         * 切換 Scene 時不會消失
+         * =========================================================
+         */
+        const sharedObjects = [];
 
-</div>
+        let sharedZCounter = 1;
 
-</div>
+        let currentSceneId = null;
 
+        let selectedId = null;
 
-<script>
 
-/* ==========================================
-   資料
-========================================== */
+        /* ==========================================
+           目前場景
+        ========================================== */
 
-/* ==========================================
-   場景資料
-========================================== */
+        function getCurrentScene() {
 
-const scenes = [];
-
-/*
- * =========================================================
- * 全場景共用的「畫面元件」
- *
- * 切換 Scene 時不會消失
- * =========================================================
- */
-const sharedObjects = [];
-
-let sharedZCounter = 1;
-
-let currentSceneId = null;
-
-let selectedId = null;
-
-
-/* ==========================================
-   目前場景
-========================================== */
-
-function getCurrentScene() {
-
-    return scenes.find(
-        scene => scene.id === currentSceneId
-    ) || null;
-
-}
-
-
-/*
- * =========================================================
- * 取得目前畫面上應該顯示的所有元件
- *
- * ① sharedObjects
- *    → 所有場景共用的畫面元件
- *
- * ② scene.objects
- *    → 目前 Scene 專屬的場景標誌元件
- * =========================================================
- */
-function getObjects() {
-
-    const scene =
-        getCurrentScene();
-
-    if (!scene) {
-        return [];
-    }
-
-    return [
-        ...sharedObjects,
-        ...scene.objects
-    ];
-
-}
-
-
-function getBackgroundData() {
-
-    const scene = getCurrentScene();
-
-    return scene ? scene.backgroundData : null;
-
-}
-
-
-function getForegroundData() {
-
-    const scene = getCurrentScene();
-
-    return scene ? scene.foregroundData : null;
-
-}
-
-/* ==========================================
-   場景管理
-========================================== */
-
-function createScene(name = "新場景") {
-
-    return {
-
-        id: createId(),
-
-        name: name,
-
-        backgroundData: null,
-
-        foregroundData: null,
-
-        /* 前景設定 */
-        foregroundWidth: 40,
-
-        foregroundHeight: 30,
-
-        /* true = 等比例裁切符合尺寸
-           false = 直接拉伸符合尺寸 */
-        foregroundFit: false,
-
-        objects: [],
-
-        zCounter: 1
-
-    };
-
-}
-
-
-function addScene() {
-
-    const scene = createScene(
-        "場景 " + (scenes.length + 1)
-    );
-
-    scenes.push(scene);
-
-    currentSceneId = scene.id;
-
-    selectedId = null;
-
-    renderSceneList();
-    loadCurrentScene();
-
-}
-
-document.getElementById("sceneNameInput")
-.addEventListener("input", function() {
-
-    const scene = getCurrentScene();
-
-    if (!scene) return;
-
-    scene.name = this.value;
-
-    renderSceneList();
-
-});
-
-
-
-function deleteCurrentScene() {
-
-    if (!currentSceneId) return;
-
-    if (scenes.length <= 1) {
-
-        alert("至少要保留一個場景。");
-
-        return;
-
-    }
-
-    const index =
-        scenes.findIndex(
-            scene => scene.id === currentSceneId
-        );
-
-    if (index === -1) return;
-
-    scenes.splice(index, 1);
-
-    currentSceneId =
-        scenes[Math.max(0, index - 1)].id;
-
-    selectedId = null;
-
-    renderSceneList();
-    loadCurrentScene();
-
-}
-
-
-function switchScene(id) {
-
-    if (id === currentSceneId) return;
-
-    currentSceneId = id;
-
-    selectedId = null;
-
-    loadCurrentScene();
-
-    renderSceneList();
-
-}
-
-
-function loadCurrentScene() {
-
-    const scene = getCurrentScene();
-
-    if (!scene) return;
-
-    selectedId = null;
-
-    /* 場景名稱 */
-    document.getElementById("sceneNameInput").value =
-        scene.name;
-        
-    /* 前景設定 */
-foregroundWidthInput.value =
-    scene.foregroundWidth ?? 40;
-
-foregroundHeightInput.value =
-    scene.foregroundHeight ?? 30;
-
-foregroundFitInput.checked =
-    scene.foregroundFit ?? false;
-
-updateForegroundStyle();
-
-    /* 背景 */
-    if (scene.backgroundData) {
-
-        background.src =
-            scene.backgroundData;
-
-    } else {
-
-        background.removeAttribute("src");
-
-    }
-
-    /* 前景 */
-    if (scene.foregroundData) {
-
-        foreground.src =
-            scene.foregroundData;
-
-    } else {
-
-        foreground.removeAttribute("src");
-
-    }
-
-    editor.style.display = "none";
-
-    noSelection.style.display = "block";
-
-    render();
-
-    renderSceneList();
-
-}
-
-/* ==========================================
-   前景顯示設定
-========================================== */
-
-function updateForegroundStyle() {
-
-    const scene =
-        getCurrentScene();
-
-    if (!scene) return;
-
-    /*
-     * 前景尺寸是「格數」
-     * 每格 = 24 × 24 px
-     */
-    const gridSize = 24;
-
-    const width =
-        (Number(scene.foregroundWidth) || 40)
-        * gridSize;
-
-    const height =
-        (Number(scene.foregroundHeight) || 30)
-        * gridSize;
-
-    const fit =
-        scene.foregroundFit === true;
-
-    /*
-     * 1920 × 1080 畫布中央
-     */
-    const left =
-        (1920 - width) / 2;
-
-    const top =
-        (1080 - height) / 2;
-
-    foreground.style.width =
-        width + "px";
-
-    foreground.style.height =
-        height + "px";
-
-    foreground.style.left =
-        left + "px";
-
-    foreground.style.top =
-        top + "px";
-
-    /*
-     * true：
-     * 等比例縮放 + 裁切
-     *
-     * false：
-     * 直接拉伸
-     */
-    foreground.style.objectFit =
-        fit
-            ? "cover"
-            : "fill";
-
-}
-
-
-function renderSceneList() {
-
-    const list =
-        document.getElementById("sceneList");
-
-    list.innerHTML = "";
-
-    scenes.forEach((scene, index) => {
-
-        const div =
-            document.createElement("div");
-
-        div.className =
-            "scene-list-item";
-
-        if (scene.id === currentSceneId) {
-
-            div.classList.add("selected");
+            return scenes.find(
+                scene => scene.id === currentSceneId
+            ) || null;
 
         }
 
-        div.textContent =
-            (index + 1) + ". " + scene.name;
 
-        div.onclick = function() {
+        /*
+         * =========================================================
+         * 取得目前畫面上應該顯示的所有元件
+         *
+         * ① sharedObjects
+         *    → 所有場景共用的畫面元件
+         *
+         * ② scene.objects
+         *    → 目前 Scene 專屬的場景標誌元件
+         * =========================================================
+         */
+        function getObjects() {
 
-            switchScene(scene.id);
+            const scene =
+                getCurrentScene();
 
-        };
+            if (!scene) {
+                return [];
+            }
 
-        list.appendChild(div);
+            return [
+                ...sharedObjects,
+                ...scene.objects
+            ];
 
-    });
-
-}
-
-
-/* ==========================================
-   DOM
-========================================== */
-
-const objectImageInput =
-    document.getElementById("objectImageInput");
-
-const markerImageInput =
-    document.getElementById("markerImageInput");
-
-const backgroundImageInput =
-    document.getElementById("backgroundImageInput");
-
-const foregroundImageInput =
-    document.getElementById("foregroundImageInput");
-
-const objectList = document.getElementById("objectList");
-
-const objectsContainer = document.getElementById("objects");
-
-const background = document.getElementById("background");
-
-const foreground = document.getElementById("foreground");
-
-const dropHint = document.getElementById("dropHint");
-
-const foregroundWidthInput =
-    document.getElementById("foregroundWidthInput");
-
-const foregroundHeightInput =
-    document.getElementById("foregroundHeightInput");
-
-const foregroundFitInput =
-    document.getElementById("foregroundFitInput");
-
-const editor = document.getElementById("editor");
-
-const noSelection = document.getElementById("noSelection");
-
-const sceneCanvas =
-    document.getElementById("scene");
+        }
 
 
-/* ==========================================
-   前景尺寸設定
-========================================== */
+        function getBackgroundData() {
 
-foregroundWidthInput.addEventListener(
-    "input",
-    function() {
+            const scene = getCurrentScene();
 
-        const scene =
-            getCurrentScene();
+            return scene ? scene.backgroundData : null;
 
-        if (!scene) return;
+        }
 
-        const value =
-            Math.max(
-                1,
-                Number(this.value) || 1
+
+        function getForegroundData() {
+
+            const scene = getCurrentScene();
+
+            return scene ? scene.foregroundData : null;
+
+        }
+
+        /* ==========================================
+           場景管理
+        ========================================== */
+
+        function createScene(name = "新場景") {
+
+            return {
+
+                id: createId(),
+
+                name: name,
+
+                backgroundData: null,
+
+                foregroundData: null,
+
+                /* 前景設定 */
+                foregroundWidth: 40,
+
+                foregroundHeight: 30,
+
+                /* true = 等比例裁切符合尺寸
+                   false = 直接拉伸符合尺寸 */
+                foregroundFit: false,
+
+                /*
+                 * 格線吸附
+                 *
+                 * false = 自由移動
+                 * true  = 拖曳時自動吸附到格線
+                 */
+                alignWithGrid: true,
+
+                objects: [],
+
+                zCounter: 1
+
+            };
+
+        }
+
+
+        function addScene() {
+
+            const scene = createScene(
+                "場景 " + (scenes.length + 1)
             );
 
-        scene.foregroundWidth =
-            value;
+            scenes.push(scene);
 
-        updateForegroundStyle();
+            currentSceneId = scene.id;
 
-    }
-);
+            selectedId = null;
 
+            renderSceneList();
+            loadCurrentScene();
 
-foregroundHeightInput.addEventListener(
-    "input",
-    function() {
+        }
 
-        const scene =
-            getCurrentScene();
+        document.getElementById("sceneNameInput")
+            .addEventListener("input", function () {
 
-        if (!scene) return;
+                const scene = getCurrentScene();
 
-        const value =
-            Math.max(
-                1,
-                Number(this.value) || 1
-            );
+                if (!scene) return;
 
-        scene.foregroundHeight =
-            value;
+                scene.name = this.value;
 
-        updateForegroundStyle();
+                renderSceneList();
 
-    }
-);
+            });
 
 
-foregroundFitInput.addEventListener(
-    "change",
-    function() {
 
-        const scene =
-            getCurrentScene();
+        function deleteCurrentScene() {
 
-        if (!scene) return;
+            if (!currentSceneId) return;
 
-        scene.foregroundFit =
-            this.checked;
+            if (scenes.length <= 1) {
 
-        updateForegroundStyle();
+                alert("至少要保留一個場景。");
 
-    }
-);
+                return;
 
-/* ==========================================
-   工具
-========================================== */
+            }
 
-function createId() {
+            const index =
+                scenes.findIndex(
+                    scene => scene.id === currentSceneId
+                );
 
-    return Math.random()
-        .toString(16)
-        .slice(2) +
-        Date.now().toString(16);
+            if (index === -1) return;
 
-}
+            scenes.splice(index, 1);
 
+            currentSceneId =
+                scenes[Math.max(0, index - 1)].id;
 
-function getSelectedObject() {
+            selectedId = null;
 
-    return getObjects().find(o => o.id === selectedId);
+            renderSceneList();
+            loadCurrentScene();
 
-}
-
-/* =========================================================
-   圖片標準化
-   ---------------------------------------------------------
-   所有輸入圖片最後一律重新編碼成 PNG。
-
-   不論原本是：
-   PNG / JPG / JPEG / WEBP / GIF ...
-
-   匯出時都會統一成：
-   PNG
-
-   這樣可以避免：
-   1. 副檔名是 PNG，但實際仍保留不同來源編碼
-   2. 後續鏡像 / 透明度處理時格式不一致
-   ========================================================= */
-
-const MAX_IMAGE_BYTES = 4.8 * 1024 * 1024;
-const INITIAL_MAX_DIMENSION = 4096;
+        }
 
 
-/* File → Data URL */
-function fileToDataURL(file) {
+        function switchScene(id) {
 
-    return new Promise((resolve, reject) => {
+            if (id === currentSceneId) return;
 
-        const reader = new FileReader();
+            currentSceneId = id;
 
-        reader.onload = () =>
-            resolve(reader.result);
+            selectedId = null;
 
-        reader.onerror = () =>
-            reject(
-                new Error("圖片讀取失敗。")
-            );
+            loadCurrentScene();
 
-        reader.readAsDataURL(file);
+            renderSceneList();
 
-    });
-
-}
+        }
 
 
-/* Data URL → Image */
-function dataURLToImage(dataURL) {
+        function loadCurrentScene() {
 
-    return new Promise((resolve, reject) => {
+            const scene = getCurrentScene();
 
-        const img = new Image();
+            if (!scene) return;
 
-        img.onload = () =>
-            resolve(img);
+            selectedId = null;
 
-        img.onerror = () =>
-            reject(
-                new Error("圖片解析失敗。")
-            );
+            /* 場景名稱 */
+            document.getElementById("sceneNameInput").value =
+                scene.name;
 
-        img.src = dataURL;
+            /* 前景設定 */
+            foregroundWidthInput.value =
+                scene.foregroundWidth ?? 40;
 
-    });
+            foregroundHeightInput.value =
+                scene.foregroundHeight ?? 30;
 
-}
+            foregroundFitInput.checked =
+                scene.foregroundFit ?? false;
+
+            alignWithGridInput.checked =
+                scene.alignWithGrid ?? false;
+
+            updateForegroundStyle();
+
+            /* 背景 */
+            if (scene.backgroundData) {
+
+                background.src =
+                    scene.backgroundData;
+
+            } else {
+
+                background.removeAttribute("src");
+
+            }
+
+            /* 前景 */
+            if (scene.foregroundData) {
+
+                foreground.src =
+                    scene.foregroundData;
+
+            } else {
+
+                foreground.removeAttribute("src");
+
+            }
+
+            editor.style.display = "none";
+
+            noSelection.style.display = "block";
+
+            render();
+
+            renderSceneList();
+
+        }
+
+        /* ==========================================
+           前景顯示設定
+        ========================================== */
+
+        function updateForegroundStyle() {
+
+            const scene =
+                getCurrentScene();
+
+            if (!scene) return;
+
+            /*
+             * 前景尺寸是「格數」
+             * 每格 = 24 × 24 px
+             */
+            const gridSize = 24;
+
+            const width =
+                (Number(scene.foregroundWidth) || 40)
+                * gridSize;
+
+            const height =
+                (Number(scene.foregroundHeight) || 30)
+                * gridSize;
+
+            const fit =
+                scene.foregroundFit === true;
+
+            /*
+             * 1920 × 1080 畫布中央
+             */
+            const left =
+                (1920 - width) / 2;
+
+            const top =
+                (1080 - height) / 2;
+
+            foreground.style.width =
+                width + "px";
+
+            foreground.style.height =
+                height + "px";
+
+            foreground.style.left =
+                left + "px";
+
+            foreground.style.top =
+                top + "px";
+
+            /*
+             * true：
+             * 等比例縮放 + 裁切
+             *
+             * false：
+             * 直接拉伸
+             */
+            foreground.style.objectFit =
+                fit
+                    ? "cover"
+                    : "fill";
+
+        }
 
 
-/* Canvas → PNG Data URL */
-function canvasToPNG(canvas) {
+        function renderSceneList() {
 
-    return new Promise((resolve, reject) => {
+            const list =
+                document.getElementById("sceneList");
 
-        canvas.toBlob(
-            blob => {
+            list.innerHTML = "";
 
-                if (!blob) {
+            scenes.forEach((scene, index) => {
 
-                    reject(
-                        new Error(
-                            "PNG 圖片產生失敗。"
-                        )
-                    );
+                const div =
+                    document.createElement("div");
 
-                    return;
+                div.className =
+                    "scene-list-item";
+
+                if (scene.id === currentSceneId) {
+
+                    div.classList.add("selected");
 
                 }
 
-                const reader =
-                    new FileReader();
+                div.textContent =
+                    (index + 1) + ". " + scene.name;
 
-                reader.onload =
-                    () => resolve(
-                        reader.result
+                div.onclick = function () {
+
+                    switchScene(scene.id);
+
+                };
+
+                list.appendChild(div);
+
+            });
+
+        }
+
+
+        /* ==========================================
+           DOM
+        ========================================== */
+
+        const objectImageInput =
+            document.getElementById("objectImageInput");
+
+        const markerImageInput =
+            document.getElementById("markerImageInput");
+
+        const backgroundImageInput =
+            document.getElementById("backgroundImageInput");
+
+        const foregroundImageInput =
+            document.getElementById("foregroundImageInput");
+
+        const objectList = document.getElementById("objectList");
+
+        const objectsContainer = document.getElementById("objects");
+
+        const background = document.getElementById("background");
+
+        const foreground = document.getElementById("foreground");
+
+        const dropHint = document.getElementById("dropHint");
+
+        const foregroundWidthInput =
+            document.getElementById("foregroundWidthInput");
+
+        const foregroundHeightInput =
+            document.getElementById("foregroundHeightInput");
+
+        const foregroundFitInput =
+            document.getElementById("foregroundFitInput");
+
+        const alignWithGridInput =
+            document.getElementById("alignWithGridInput");
+
+        const editor = document.getElementById("editor");
+
+        const noSelection = document.getElementById("noSelection");
+
+        const sceneCanvas =
+            document.getElementById("scene");
+
+
+        /* ==========================================
+           前景尺寸設定
+        ========================================== */
+
+        foregroundWidthInput.addEventListener(
+            "input",
+            function () {
+
+                const scene =
+                    getCurrentScene();
+
+                if (!scene) return;
+
+                const value =
+                    Math.max(
+                        1,
+                        Number(this.value) || 1
                     );
 
-                reader.onerror =
-                    () => reject(
-                        new Error(
-                            "PNG 讀取失敗。"
-                        )
-                    );
+                scene.foregroundWidth =
+                    value;
 
-                reader.readAsDataURL(blob);
+                updateForegroundStyle();
 
-            },
-            "image/png"
-        );
-
-    });
-
-}
-
-
-/* 按比例限制最大尺寸 */
-function getScaledSize(
-    width,
-    height,
-    maxDimension
-) {
-
-    const largest =
-        Math.max(width, height);
-
-    if (largest <= maxDimension) {
-
-        return {
-            width,
-            height
-        };
-
-    }
-
-    const scale =
-        maxDimension / largest;
-
-    return {
-
-        width:
-            Math.max(
-                1,
-                Math.round(width * scale)
-            ),
-
-        height:
-            Math.max(
-                1,
-                Math.round(height * scale)
-            )
-
-    };
-
-}
-
-
-/* =========================================================
-   原始圖片 → 統一 PNG
-
-   注意：
-   這裡「一定」重新 Canvas → PNG。
-
-   所以即使原圖本來就是 PNG，
-   也不再直接保留原始 PNG bytes。
-   ========================================================= */
-
-async function prepareImage(file) {
-
-    const originalDataURL =
-        await fileToDataURL(file);
-
-    const img =
-        await dataURLToImage(
-            originalDataURL
-        );
-
-
-    let size =
-        getScaledSize(
-            img.naturalWidth,
-            img.naturalHeight,
-            INITIAL_MAX_DIMENSION
-        );
-
-
-    async function createPNG(
-        width,
-        height
-    ) {
-
-        const canvas =
-            document.createElement(
-                "canvas"
-            );
-
-        canvas.width =
-            width;
-
-        canvas.height =
-            height;
-
-        const ctx =
-            canvas.getContext("2d");
-
-        if (!ctx) {
-
-            throw new Error(
-                "瀏覽器無法建立 Canvas。"
-            );
-
-        }
-
-
-        /*
-         * 保留透明背景
-         */
-        ctx.clearRect(
-            0,
-            0,
-            width,
-            height
-        );
-
-
-        /*
-         * 所有圖片統一重新繪製
-         */
-        ctx.drawImage(
-            img,
-            0,
-            0,
-            width,
-            height
-        );
-
-
-        const dataURL =
-            await canvasToPNG(canvas);
-
-
-        return {
-
-            dataURL,
-
-            width,
-
-            height,
-
-            bytes:
-                dataURLToBytes(
-                    dataURL
-                )
-
-        };
-
-    }
-
-
-    let result =
-        await createPNG(
-            size.width,
-            size.height
-        );
-
-
-    /*
-     * PNG 超過 4.8 MB
-     * 只縮小尺寸，不改成 JPEG
-     */
-    while (
-        result.bytes.length >
-        MAX_IMAGE_BYTES
-    ) {
-
-        size = {
-
-            width:
-                Math.max(
-                    1,
-                    Math.floor(
-                        size.width * 0.9
-                    )
-                ),
-
-            height:
-                Math.max(
-                    1,
-                    Math.floor(
-                        size.height * 0.9
-                    )
-                )
-
-        };
-
-
-        result =
-            await createPNG(
-                size.width,
-                size.height
-            );
-
-
-        if (
-            size.width <= 1 &&
-            size.height <= 1
-        ) {
-
-            break;
-
-        }
-
-    }
-
-
-    return {
-
-        dataURL:
-            result.dataURL,
-
-        width:
-            result.width,
-
-        height:
-            result.height
-
-    };
-
-}
-
-/* =========================================================
-   物件圖片處理
-   ---------------------------------------------------------
-   將：
-
-   flipX
-   flipY
-   opacity
-
-   直接烘進 PNG 圖片。
-
-   注意：
-   rotation 不在這裡處理。
-
-   因為 Cocofolia 的 object 本身有 angle 欄位，
-   所以旋轉仍然由 Room JSON 的 angle 控制。
-   ========================================================= */
-
-async function prepareObjectImage(object) {
-
-    if (!object || !object.imageUrl) {
-        return null;
-    }
-
-
-    const img =
-        await dataURLToImage(
-            object.imageUrl
-        );
-
-
-    let size =
-        getScaledSize(
-            img.naturalWidth,
-            img.naturalHeight,
-            INITIAL_MAX_DIMENSION
-        );
-
-
-    async function createPNG(
-        width,
-        height
-    ) {
-
-        const canvas =
-            document.createElement(
-                "canvas"
-            );
-
-        canvas.width =
-            width;
-
-        canvas.height =
-            height;
-
-
-        const ctx =
-            canvas.getContext("2d");
-
-        if (!ctx) {
-
-            throw new Error(
-                "瀏覽器無法建立 Canvas。"
-            );
-
-        }
-
-
-        ctx.clearRect(
-            0,
-            0,
-            width,
-            height
-        );
-
-
-        /*
-         * 透明度直接寫進 PNG Alpha
-         */
-        ctx.globalAlpha =
-            Math.max(
-                0,
-                Math.min(
-                    1,
-                    Number(object.opacity ?? 1)
-                )
-            );
-
-
-        /*
-         * 以圖片中心為基準鏡像
-         */
-        ctx.translate(
-            width / 2,
-            height / 2
-        );
-
-
-        ctx.scale(
-            object.flipX ? -1 : 1,
-            object.flipY ? -1 : 1
-        );
-
-
-        ctx.drawImage(
-            img,
-            -width / 2,
-            -height / 2,
-            width,
-            height
-        );
-
-
-        ctx.globalAlpha = 1;
-
-
-        const dataURL =
-            await canvasToPNG(
-                canvas
-            );
-
-
-        return {
-
-            dataURL,
-
-            bytes:
-                dataURLToBytes(
-                    dataURL
-                )
-
-        };
-
-    }
-
-
-    let result =
-        await createPNG(
-            size.width,
-            size.height
-        );
-
-
-    /*
-     * 超過大小就縮小圖片
-     */
-    while (
-        result.bytes.length >
-        MAX_IMAGE_BYTES
-    ) {
-
-        size = {
-
-            width:
-                Math.max(
-                    1,
-                    Math.floor(
-                        size.width * 0.9
-                    )
-                ),
-
-            height:
-                Math.max(
-                    1,
-                    Math.floor(
-                        size.height * 0.9
-                    )
-                )
-
-        };
-
-
-        result =
-            await createPNG(
-                size.width,
-                size.height
-            );
-
-
-        if (
-            size.width <= 1 &&
-            size.height <= 1
-        ) {
-
-            break;
-
-        }
-
-    }
-
-
-    return {
-
-        dataURL:
-            result.dataURL,
-
-        width:
-            size.width,
-
-        height:
-            size.height
-
-    };
-
-}
-
-
-/* ==========================================
-   新增畫面元件
-========================================== */
-
-objectImageInput.addEventListener("change", async function(e) {
-
-    const file = e.target.files[0];
-
-    if (!file) return;
-
-    try {
-
-        const prepared =
-            await prepareImage(file);
-
-        const img =
-            await dataURLToImage(
-                prepared.dataURL
-            );
-
-        const scene =
-            getCurrentScene();
-
-        if (!scene) return;
-
-
-        const object = {
-
-            id:
-                createId(),
-
-            name:
-                file.name,
-
-            imageUrl:
-                prepared.dataURL,
-
-            x:
-                100,
-
-            y:
-                100,
-
-            z:
-    sharedZCounter++,
-
-            angle:
-                0,
-
-            width:
-                img.naturalWidth,
-
-            height:
-                img.naturalHeight,
-
-            opacity:
-                1,
-
-            flipX:
-                false,
-
-            flipY:
-                false
-
-        };
-
-
-        sharedObjects.push(object);
-
-        render();
-
-        selectObject(object.id);
-
-
-    } catch (error) {
-
-        console.error(
-            "圖片處理失敗：",
-            error
-        );
-
-        alert(
-            "圖片處理失敗：\n" +
-            error.message
-        );
-
-    }
-
-
-    /* 讓下次選同一張圖也能再次觸發 change */
-    this.value = "";
-
-});
-
-
-/* ==========================================
-   新增場景標誌元件
-========================================== */
-
-markerImageInput.addEventListener("change", async function(e) {
-
-    const file = e.target.files[0];
-
-    if (!file) return;
-
-    try {
-
-        const prepared =
-            await prepareImage(file);
-
-        const img =
-            await dataURLToImage(
-                prepared.dataURL
-            );
-
-        const scene =
-            getCurrentScene();
-
-        if (!scene) return;
-
-
-        const object = {
-
-            id:
-                createId(),
-
-            name:
-                file.name,
-
-            imageUrl:
-                prepared.dataURL,
-
-            x:
-                100,
-
-            y:
-                100,
-
-            z:
-    sharedZCounter++,
-
-            angle:
-                0,
-
-            width:
-                img.naturalWidth,
-
-            height:
-                img.naturalHeight,
-
-            opacity:
-                1,
-
-            flipX:
-                false,
-
-            flipY:
-                false,
-
-            type:
-                "sceneMarker"
-
-        };
-
-
-        scene.objects.push(object);
-
-render();
-
-selectObject(object.id);
-
-
-    } catch (error) {
-
-        console.error(
-            "圖片處理失敗：",
-            error
-        );
-
-        alert(
-            "圖片處理失敗：\n" +
-            error.message
-        );
-
-    }
-
-
-    this.value = "";
-
-});
-
-
-/* ==========================================
-   設定背景
-========================================== */
-
-backgroundImageInput.addEventListener(
-    "change",
-    async function(e) {
-
-        const file =
-            e.target.files[0];
-
-        if (!file) return;
-
-        const scene =
-            getCurrentScene();
-
-        if (!scene) return;
-
-
-        try {
-
-            const prepared =
-                await prepareImage(file);
-
-
-            scene.backgroundData =
-                prepared.dataURL;
-
-
-            background.src =
-                scene.backgroundData;
-
-
-            updateDropHint();
-
-
-        } catch (error) {
-
-            console.error(
-                "背景圖片處理失敗：",
-                error
-            );
-
-            alert(
-                "背景圖片處理失敗：\n" +
-                error.message
-            );
-
-        }
-
-
-        this.value = "";
-
-    }
-);
-
-
-/* ==========================================
-   設定前景
-========================================== */
-
-foregroundImageInput.addEventListener(
-    "change",
-    async function(e) {
-
-        const file =
-            e.target.files[0];
-
-        if (!file) return;
-
-        const scene =
-            getCurrentScene();
-
-        if (!scene) return;
-
-
-        try {
-
-            const prepared =
-                await prepareImage(file);
-
-
-            scene.foregroundData =
-    prepared.dataURL;
-
-if (!scene.foregroundWidth) {
-    scene.foregroundWidth = 40;
-}
-
-if (!scene.foregroundHeight) {
-    scene.foregroundHeight = 30;
-}
-
-foreground.src =
-    scene.foregroundData;
-
-updateForegroundStyle();
-
-updateDropHint();
-
-
-        } catch (error) {
-
-            console.error(
-                "前景圖片處理失敗：",
-                error
-            );
-
-            alert(
-                "前景圖片處理失敗：\n" +
-                error.message
-            );
-
-        }
-
-
-        this.value = "";
-
-    }
-);
-
-
-/* ==========================================
-   四個按鈕
-========================================== */
-
-document.getElementById("addImageObject")
-.addEventListener("click", function() {
-
-    objectImageInput.click();
-
-});
-
-
-document.getElementById("addSceneMarker")
-.addEventListener("click", function() {
-
-    markerImageInput.click();
-
-});
-
-
-document.getElementById("setBackground")
-.addEventListener("click", function() {
-
-    backgroundImageInput.click();
-
-});
-
-
-document.getElementById("setForeground")
-.addEventListener("click", function() {
-
-    foregroundImageInput.click();
-
-});
-
-/* ==========================================
-   清除背景
-========================================== */
-
-document.getElementById("clearBackground")
-.addEventListener("click", function() {
-
-    const scene = getCurrentScene();
-
-    if (!scene) return;
-
-    // 清除場景資料
-    scene.backgroundData = null;
-
-    // 清除畫面上的圖片
-    background.removeAttribute("src");
-
-    // 更新提示文字
-    updateDropHint();
-
-});
-
-
-/* ==========================================
-   清除前景
-========================================== */
-
-document.getElementById("clearForeground")
-.addEventListener("click", function() {
-
-    const scene = getCurrentScene();
-
-    if (!scene) return;
-
-    // 清除場景資料
-    scene.foregroundData = null;
-
-    // 清除畫面上的圖片
-    foreground.removeAttribute("src");
-
-    // 更新提示文字
-    updateDropHint();
-
-});
-
-/* ==========================================
-   Render
-========================================== */
-
-function render() {
-
-    objectsContainer.innerHTML = "";
-
-    getObjects().forEach(object => {
-
-        const img = document.createElement("img");
-
-        img.className = "scene-object";
-
-        img.src = object.imageUrl;
-
-        img.dataset.id = object.id;
-
-        img.style.left = object.x + "px";
-
-        img.style.top = object.y + "px";
-
-        img.style.width = object.width + "px";
-
-        img.style.height = object.height + "px";
-
-        img.style.zIndex = object.z;
-
-        img.style.opacity = object.opacity;
-
-        img.style.transform =
-            "rotate(" + object.angle + "deg) " +
-            "scale(" +
-            (object.flipX ? -1 : 1) +
-            "," +
-            (object.flipY ? -1 : 1) +
-            ")";
-
-        img.addEventListener("mousedown", startDrag);
-
-        img.addEventListener("click", function(e) {
-
-            e.stopPropagation();
-
-            selectObject(object.id);
-
-        });
-
-        objectsContainer.appendChild(img);
-
-    });
-
-    updateList();
-
-    updateSelectionVisual();
-
-    updateDropHint();
-
-}
-
-
-/* ==========================================
-   物件列表
-========================================== */
-
-function updateList() {
-
-    objectList.innerHTML = "";
-
-    const sorted = [...getObjects()].sort((a,b) => b.z - a.z);
-
-    sorted.forEach(object => {
-
-        const div = document.createElement("div");
-
-        div.className = "object-item";
-
-        if (object.id === selectedId) {
-
-            div.classList.add("selected");
-
-        }
-
-        div.textContent =
-            object.name +
-            "  [Z:" +
-            object.z +
-            "]";
-
-        div.addEventListener("click", function() {
-
-            selectObject(object.id);
-
-        });
-
-        objectList.appendChild(div);
-
-    });
-
-}
-
-
-function updateSelectionVisual() {
-
-    document.querySelectorAll(".scene-object")
-        .forEach(el => {
-
-            el.classList.toggle(
-                "selected",
-                el.dataset.id === selectedId
-            );
-
-        });
-
-}
-
-
-/* ==========================================
-   選取
-========================================== */
-
-function selectObject(id) {
-
-    selectedId = id;
-
-    const object = getSelectedObject();
-
-    if (!object) {
-
-        editor.style.display = "none";
-
-        noSelection.style.display = "block";
-
-        return;
-
-    }
-
-    editor.style.display = "block";
-
-    noSelection.style.display = "none";
-
-    document.getElementById("nameInput").value =
-        object.name;
-
-    document.getElementById("xInput").value =
-        Math.round(object.x);
-
-    document.getElementById("yInput").value =
-        Math.round(object.y);
-
-    document.getElementById("widthInput").value =
-        Math.round(object.width);
-
-    document.getElementById("heightInput").value =
-        Math.round(object.height);
-
-    document.getElementById("angleInput").value =
-        object.angle;
-
-    document.getElementById("opacityInput").value =
-        object.opacity * 100;
-
-    document.getElementById("opacityValue").textContent =
-        Math.round(object.opacity * 100) + "%";
-        
-
-    updateSelectionVisual();
-
-    updateList();
-
-}
-
-        document
-    .getElementById("addScene")
-    .addEventListener(
-        "click",
-        addScene
-    );
-
-
-document
-    .getElementById("deleteScene")
-    .addEventListener(
-        "click",
-        deleteCurrentScene
-    );
-
-
-/* ==========================================
-   編輯欄位
-========================================== */
-
-document.getElementById("nameInput")
-.addEventListener("input", function() {
-
-    const object = getSelectedObject();
-
-    if (!object) return;
-
-    object.name = this.value;
-
-    render();
-
-});
-
-
-document.getElementById("xInput")
-.addEventListener("input", function() {
-
-    const object = getSelectedObject();
-
-    if (!object) return;
-
-    object.x = Number(this.value) || 0;
-
-    render();
-
-});
-
-
-document.getElementById("yInput")
-.addEventListener("input", function() {
-
-    const object = getSelectedObject();
-
-    if (!object) return;
-
-    object.y = Number(this.value) || 0;
-
-    render();
-
-});
-
-
-document.getElementById("widthInput")
-.addEventListener("input", function() {
-
-    const object = getSelectedObject();
-
-    if (!object) return;
-
-    object.width =
-        Math.max(1, Number(this.value) || 1);
-
-    render();
-
-});
-
-
-document.getElementById("heightInput")
-.addEventListener("input", function() {
-
-    const object = getSelectedObject();
-
-    if (!object) return;
-
-    object.height =
-        Math.max(1, Number(this.value) || 1);
-
-    render();
-
-});
-
-
-document.getElementById("angleInput")
-.addEventListener("input", function() {
-
-    const object = getSelectedObject();
-
-    if (!object) return;
-
-    object.angle =
-        Number(this.value) || 0;
-
-    render();
-
-});
-
-
-document.getElementById("opacityInput")
-.addEventListener("input", function() {
-
-    const object = getSelectedObject();
-
-    if (!object) return;
-
-    object.opacity =
-        Number(this.value) / 100;
-
-    document.getElementById("opacityValue")
-        .textContent =
-        this.value + "%";
-
-    render();
-
-});
-
-
-/* ==========================================
-   鏡像
-========================================== */
-
-document.getElementById("flipX")
-.addEventListener("click", function() {
-
-    const object = getSelectedObject();
-
-    if (!object) return;
-
-    object.flipX = !object.flipX;
-
-    render();
-
-});
-
-
-document.getElementById("flipY")
-.addEventListener("click", function() {
-
-    const object = getSelectedObject();
-
-    if (!object) return;
-
-    object.flipY = !object.flipY;
-
-    render();
-
-});
-
-
-/* ==========================================
-   圖層
-========================================== */
-
-document.getElementById("moveUp")
-.addEventListener("click", function() {
-
-    const objects = getObjects();
-    const object = getSelectedObject();
-
-    if (!object) return;
-
-    const sorted =
-        [...objects].sort((a, b) => a.z - b.z);
-
-    const index =
-        sorted.findIndex(
-            o => o.id === object.id
-        );
-
-    if (index === -1) return;
-
-    if (index < sorted.length - 1) {
-
-        const other =
-            sorted[index + 1];
-
-        const temp =
-            object.z;
-
-        object.z =
-            other.z;
-
-        other.z =
-            temp;
-
-    }
-
-    render();
-
-});
-
-
-document.getElementById("moveDown")
-.addEventListener("click", function() {
-
-    const objects = getObjects();
-    const object = getSelectedObject();
-
-    if (!object) return;
-
-    const sorted =
-        [...objects].sort((a, b) => a.z - b.z);
-
-    const index =
-        sorted.findIndex(
-            o => o.id === object.id
-        );
-
-    if (index === -1) return;
-
-    if (index > 0) {
-
-        const other =
-            sorted[index - 1];
-
-        const temp =
-            object.z;
-
-        object.z =
-            other.z;
-
-        other.z =
-            temp;
-
-    }
-
-    render();
-
-});
-
-
-/* ==========================================
-   複製
-========================================== */
-
-document.getElementById("duplicate")
-.addEventListener("click", function() {
-
-    const object = getSelectedObject();
-
-    const scene = getCurrentScene();
-
-    if (!object || !scene) return;
-
-    const copy = {
-
-    ...object,
-
-    id:
-        createId(),
-
-    name:
-        object.name + " 副本",
-
-    x:
-        object.x + 20,
-
-    y:
-        object.y + 20,
-
-    z:
-        object.type === "sceneMarker"
-            ? ++scene.zCounter
-            : ++sharedZCounter
-
-};
-
-
-/*
- * 場景標誌 → 留在目前 Scene
- *
- * 一般畫面元件 → 全場景共用
- */
-if (object.type === "sceneMarker") {
-
-    scene.objects.push(copy);
-
-} else {
-
-    sharedObjects.push(copy);
-
-}
-
-
-render();
-
-selectObject(copy.id);
-
-    render();
-
-    selectObject(copy.id);
-
-});
-
-
-/* ==========================================
-   刪除
-========================================== */
-
-document.getElementById("delete")
-.addEventListener("click", function() {
-
-    if (!selectedId) return;
-
-    const scene =
-    getCurrentScene();
-
-let objects;
-
-if (scene) {
-
-    /*
-     * 場景標誌 → 從目前 Scene 刪除
-     */
-    if (
-        scene.objects.some(
-            o => o.id === selectedId
-        )
-    ) {
-
-        objects =
-            scene.objects;
-
-    }
-
-    /*
-     * 一般畫面元件
-     * → 從全場景共用物件刪除
-     */
-    else {
-
-        objects =
-            sharedObjects;
-
-    }
-
-}
-
-
-if (objects) {
-
-    const index =
-        objects.findIndex(
-            o => o.id === selectedId
-        );
-
-    if (index !== -1) {
-
-        objects.splice(index, 1);
-
-    }
-
-}
-
-    selectedId = null;
-
-    editor.style.display = "none";
-
-    noSelection.style.display = "block";
-
-    render();
-
-});
-
-
-/* ==========================================
-   拖曳
-========================================== */
-
-let dragging = false;
-
-let dragObject = null;
-
-let dragStartX = 0;
-
-let dragStartY = 0;
-
-let objectStartX = 0;
-
-let objectStartY = 0;
-
-
-function startDrag(e) {
-
-    /*
-     * 防止同時啟動 Scene 平移
-     */
-    e.stopPropagation();
-
-    const id =
-        e.currentTarget.dataset.id;
-
-    selectObject(id);
-
-    const object =
-        getSelectedObject();
-
-    if (!object) return;
-
-    dragging = true;
-
-    dragObject = object;
-
-    dragStartX = e.clientX;
-
-    dragStartY = e.clientY;
-
-    objectStartX = object.x;
-
-    objectStartY = object.y;
-
-    e.preventDefault();
-
-}
-
-
-document.addEventListener("mousemove", function(e) {
-
-    if (!dragging || !dragObject) return;
-
-    const dx =
-    (e.clientX - dragStartX) /
-    viewScale;
-
-const dy =
-    (e.clientY - dragStartY) /
-    viewScale;
-
-dragObject.x =
-    objectStartX + dx;
-
-dragObject.y =
-    objectStartY + dy;
-
-    render();
-
-});
-
-
-document.addEventListener("mouseup", function() {
-
-    dragging = false;
-
-    dragObject = null;
-
-});
-
-
-/* ==========================================
-   點空白處取消選取
-========================================== */
-
-document.getElementById("scene")
-.addEventListener("click", function(e) {
-
-    if (
-        e.target === this ||
-        e.target === background ||
-        e.target === foreground
-    ) {
-
-        selectedId = null;
-
-        editor.style.display = "none";
-
-        noSelection.style.display = "block";
-
-        updateSelectionVisual();
-
-        updateList();
-
-    }
-
-});
-
-
-/* ==========================================
-   提示文字
-========================================== */
-
-function updateDropHint() {
-
-    dropHint.style.display =
-        (
-            getObjects().length === 0 &&
-            !getBackgroundData() &&
-            !getForegroundData()
-        )
-        ? "block"
-        : "none";
-
-}
-
-
-/* =========================================================
-   CCFOLIA ROOM ZIP
-========================================================= */
-
-
-/*
-  =========================================================
-  SHA-256
-  =========================================================
-*/
-
-async function sha256Hex(bytes){
-
-    const hashBuffer =
-        await crypto.subtle.digest(
-            "SHA-256",
-            bytes
-        );
-
-    const hashBytes =
-        new Uint8Array(hashBuffer);
-
-    return Array.from(hashBytes)
-        .map(
-            b =>
-                b.toString(16)
-                 .padStart(2, "0")
-        )
-        .join("");
-}
-
-
-/*
-  =========================================================
-  Data URL → Uint8Array
-  =========================================================
-*/
-
-function dataURLToBytes(dataURL){
-
-    if(!dataURL){
-        return null;
-    }
-
-    const parts =
-        dataURL.split(",");
-
-    if(parts.length !== 2){
-        throw new Error(
-            "無法解析圖片 Data URL。"
-        );
-    }
-
-    const base64 =
-        parts[1];
-
-    const binary =
-        atob(base64);
-
-    const bytes =
-        new Uint8Array(
-            binary.length
-        );
-
-    for(
-        let i = 0;
-        i < binary.length;
-        i++
-    ){
-
-        bytes[i] =
-            binary.charCodeAt(i);
-
-    }
-
-    return bytes;
-}
-
-
-/*
-  =========================================================
-  取得 Data URL MIME
-  =========================================================
-*/
-
-function getDataURLMime(dataURL){
-
-    if(!dataURL){
-        return "image/png";
-    }
-
-    const match =
-        dataURL.match(
-            /^data:([^;,]+)/
-        );
-
-    return match
-        ? match[1]
-        : "image/png";
-}
-
-
-/*
-  =========================================================
-  MIME → 副檔名
-  =========================================================
-*/
-
-function getImageExtension(mime){
-
-    switch(mime){
-
-        case "image/jpeg":
-            return ".jpg";
-
-        case "image/webp":
-            return ".webp";
-
-        case "image/gif":
-            return ".gif";
-
-        case "image/svg+xml":
-            return ".svg";
-
-        case "image/png":
-        default:
-            return ".png";
-
-    }
-
-}
-
-
-/*
-  =========================================================
-  Uint8Array 合併
-  =========================================================
-*/
-
-function concatBytes(...arrays){
-
-    let total = 0;
-
-    arrays.forEach(
-        array => {
-            total += array.length;
-        }
-    );
-
-    const result =
-        new Uint8Array(total);
-
-    let offset = 0;
-
-    arrays.forEach(
-        array => {
-
-            result.set(
-                array,
-                offset
-            );
-
-            offset +=
-                array.length;
-
-        }
-    );
-
-    return result;
-}
-
-
-/*
-  =========================================================
-  CRC-32
-  =========================================================
-*/
-
-function crc32(bytes){
-
-    let crc =
-        0xffffffff;
-
-    for(
-        let i = 0;
-        i < bytes.length;
-        i++
-    ){
-
-        crc ^= bytes[i];
-
-        for(
-            let j = 0;
-            j < 8;
-            j++
-        ){
-
-            crc =
-                (crc >>> 1) ^
-                (
-                    0xedb88320 &
-                    -(crc & 1)
-                );
-
-        }
-
-    }
-
-    return (
-        crc ^ 0xffffffff
-    ) >>> 0;
-}
-
-
-/*
-  =========================================================
-  Little Endian 16-bit
-  =========================================================
-*/
-
-function u16(n){
-
-    return new Uint8Array([
-
-        n & 0xff,
-
-        (n >>> 8) & 0xff
-
-    ]);
-
-}
-
-
-/*
-  =========================================================
-  Little Endian 32-bit
-  =========================================================
-*/
-
-function u32(n){
-
-    return new Uint8Array([
-
-        n & 0xff,
-
-        (n >>> 8) & 0xff,
-
-        (n >>> 16) & 0xff,
-
-        (n >>> 24) & 0xff
-
-    ]);
-
-}
-
-
-/*
-  =========================================================
-  建立 Store ZIP
-  =========================================================
-
-  ZIP 結構：
-
-      __data.json
-      .token
-      <sha256>.png
-      <sha256>.png
-      ...
-
-  與角色製作器使用同一種 ZIP 結構。
-*/
-
-function createStoredZip(entries){
-
-    const encoder =
-        new TextEncoder();
-
-    const localParts = [];
-
-    const centralParts = [];
-
-    let offset = 0;
-
-
-    for(
-        const entry of entries
-    ){
-
-        const nameBytes =
-            encoder.encode(
-                entry.name
-            );
-
-        const data =
-            entry.data instanceof Uint8Array
-                ? entry.data
-                : new Uint8Array(
-                    entry.data
-                );
-
-
-        const crc =
-            crc32(data);
-
-
-        /*
-          Local File Header
-        */
-
-        const localHeader =
-            concatBytes(
-
-                u32(0x04034b50),
-
-                u16(20),
-
-                u16(0x0800),
-
-                u16(0),
-
-                u16(0),
-
-                u16(0),
-
-                u32(crc),
-
-                u32(data.length),
-
-                u32(data.length),
-
-                u16(nameBytes.length),
-
-                u16(0),
-
-                nameBytes
-
-            );
-
-
-        localParts.push(
-            localHeader,
-            data
-        );
-
-
-        /*
-          Central Directory Header
-        */
-
-        const centralHeader =
-            concatBytes(
-
-                u32(0x02014b50),
-
-                u16(20),
-
-                u16(20),
-
-                u16(0x0800),
-
-                u16(0),
-
-                u16(0),
-
-                u16(0),
-
-                u32(crc),
-
-                u32(data.length),
-
-                u32(data.length),
-
-                u16(nameBytes.length),
-
-                u16(0),
-
-                u16(0),
-
-                u16(0),
-
-                u16(0),
-
-                u32(0),
-
-                u32(offset),
-
-                nameBytes
-
-            );
-
-
-        centralParts.push(
-            centralHeader
-        );
-
-
-        offset +=
-            localHeader.length +
-            data.length;
-
-    }
-
-
-    const localData =
-        concatBytes(
-            ...localParts
-        );
-
-    const centralData =
-        concatBytes(
-            ...centralParts
-        );
-
-
-    /*
-      End Of Central Directory
-    */
-
-    const endRecord =
-        concatBytes(
-
-            u32(0x06054b50),
-
-            u16(0),
-
-            u16(0),
-
-            u16(entries.length),
-
-            u16(entries.length),
-
-            u32(centralData.length),
-
-            u32(localData.length),
-
-            u16(0)
-
-        );
-
-
-    return concatBytes(
-
-        localData,
-
-        centralData,
-
-        endRecord
-
-    );
-
-}
-
-
-/* =========================================================
-   建立 CCFOLIA Room JSON
-   ========================================================= */
-
-async function buildSceneRoom() {
-
-    const resources = {};
-
-    const imageFiles = new Map();
-
-    /*
-     * Cocofolia：
-     * 一般畫面元件放在 entities.items
-     */
-    const itemEntities = {};
-
-
-async function addImage(dataURL) {
-
-    if (!dataURL) {
-        return null;
-    }
-
-
-    const bytes =
-        dataURLToBytes(dataURL);
-
-    if (!bytes) {
-        return null;
-    }
-
-
-    const hash =
-        await sha256Hex(bytes);
-
-
-    /*
-     * 所有圖片統一使用 PNG
-     */
-    const filename =
-        hash + ".png";
-
-
-    if (!imageFiles.has(filename)) {
-
-        imageFiles.set(
-            filename,
-            {
-                name:
-                    filename,
-
-                data:
-                    bytes
             }
         );
 
-    }
 
+        foregroundHeightInput.addEventListener(
+            "input",
+            function () {
 
-    resources[filename] = {
+                const scene =
+                    getCurrentScene();
 
-        type:
-            "image/png"
+                if (!scene) return;
 
-    };
+                const value =
+                    Math.max(
+                        1,
+                        Number(this.value) || 1
+                    );
 
+                scene.foregroundHeight =
+                    value;
 
-    return filename;
+                updateForegroundStyle();
 
-}
-
-    /*
-     * Room 本身不再儲存背景 / 前景
-     */
-
-    const room = {
-
-        backgroundUrl: null,
-
-        foregroundUrl: null,
-
-        sceneId:
-            scenes.length > 0
-                ? scenes[0].id
-                : null
-
-    };
-
-
-    /*
-     * 建立所有 Scene
-     */
-
-    const sceneEntities = {};
-    
-    /*
- * =====================================================
- * 全場景共用的畫面元件
- *
- * → entities.items
- * =====================================================
- */
-
-for (const object of sharedObjects) {
-
-    /*
-     * 將鏡像 / 透明度直接烘進 PNG
-     */
-    const prepared =
-        await prepareObjectImage(
-            object
-        );
-
-    const imageFilename =
-        await addImage(
-            prepared
-                ? prepared.dataURL
-                : object.imageUrl
-        );
-
-    const x =
-        (
-            object.x +
-            object.width / 2 -
-            960
-        ) / 24;
-
-    const y =
-        (
-            object.y +
-            object.height / 2 -
-            540
-        ) / 24;
-
-    const width =
-        object.width / 24;
-
-    const height =
-        object.height / 24;
-
-    itemEntities[object.id] = {
-
-        x:
-            x,
-
-        y:
-            y,
-
-        z:
-            object.z || 0,
-
-        angle:
-            object.angle || 0,
-
-        width:
-            width,
-
-        height:
-            height,
-
-        deckId:
-            null,
-
-        locked:
-            true,
-
-        visible:
-            true,
-
-        closed:
-            false,
-
-        withoutOwner:
-            false,
-
-        freezed:
-            false,
-
-        type:
-            "object",
-
-        active:
-            true,
-
-        memo:
-            "",
-
-        imageUrl:
-            imageFilename,
-
-        coverImageUrl:
-            null,
-
-        clickAction:
-            null,
-
-        order:
-            0
-
-    };
-
-}
-
-
-    for (const sceneData of scenes) {
-
-        const scene = {
-
-    name:
-        sceneData.name,
-
-    backgroundUrl:
-        await addImage(
-            sceneData.backgroundData
-        ),
-
-    foregroundUrl:
-        await addImage(
-            sceneData.foregroundData
-        ),
-
-    /*
-     * 前景尺寸：
-     * 編輯器使用「格數」儲存
-     * 例如 40 × 30
-     */
-    fieldWidth:
-        Number(sceneData.foregroundWidth) || 40,
-
-    fieldHeight:
-        Number(sceneData.foregroundHeight) || 30,
-
-    /*
-     * true  = 裁切符合前景尺寸
-     * false = 直接拉伸
-     *
-     * Cocofolia：
-     * cover = 裁切
-     * fill  = 拉伸
-     */
-    fieldObjectFit:
-        sceneData.foregroundFit === true
-            ? "cover"
-            : "fill",
-
-    /*
-     * 對齊格線
-     */
-    alignWithGrid: true,
-
-    displayGrid: false,
-
-    gridSize: 1,
-
-    markers: {},
-
-    text: "",
-
-    locked: false,
-
-    order:
-        scenes.indexOf(sceneData)
-
-};
-
-
-/*
- * =====================================================
- * 匯出這個場景裡的物件
- *
- * Cocofolia：
- *
- * 一般「畫面元件」
- * → entities.items
- *
- * 「場景標誌元件」
- * → scenes[sceneId].markers
- * =====================================================
- */
-
-for (
-    const object
-    of sceneData.objects
-) {
-
-    /*
-     * 將鏡像 / 透明度直接烘進 PNG
-     */
-    const prepared =
-        await prepareObjectImage(
-            object
-        );
-
-    const imageFilename =
-        await addImage(
-            prepared
-                ? prepared.dataURL
-                : object.imageUrl
+            }
         );
 
 
-    const x =
-        (
-            object.x +
-            object.width / 2 -
-            960
-        ) / 24;
+        foregroundFitInput.addEventListener(
+            "change",
+            function () {
 
+                const scene =
+                    getCurrentScene();
 
-    const y =
-        (
-            object.y +
-            object.height / 2 -
-            540
-        ) / 24;
+                if (!scene) return;
 
+                scene.foregroundFit =
+                    this.checked;
 
-    const width =
-        object.width / 24;
+                updateForegroundStyle();
 
+            }
+        );
 
-    const height =
-        object.height / 24;
+        alignWithGridInput.addEventListener(
+            "change",
+            function () {
 
+                const scene =
+                    getCurrentScene();
 
-    const objectId =
-        object.id ||
-        crypto.randomUUID()
-            .replace(/-/g, "")
-            .slice(0, 12);
+                if (!scene) return;
 
 
-    /*
-     * =============================================
-     * ① 場景標誌元件
-     *
-     * type === "sceneMarker"
-     * → 存進目前 Scene 的 markers
-     * =============================================
-     */
-
-    if (object.type === "sceneMarker") {
-
-        scene.markers[objectId] = {
-
-            x:
-                x,
-
-            y:
-                y,
-
-            z:
-                object.z || 0,
-
-            width:
-                width,
-
-            height:
-                height,
-
-            locked:
-                false,
-
-            freezed:
-                false,
-
-            text:
-                "",
-
-            imageUrl:
-                imageFilename,
-
-            clickAction:
-                null
-
-        };
-
-    }
-
-
-    /*
-     * =============================================
-     * ② 一般畫面元件
-     *
-     * 不是 sceneMarker
-     * → 存進 entities.items
-     * =============================================
-     */
-
-    else {
-
-        itemEntities[objectId] = {
-
-            x:
-                x,
-
-            y:
-                y,
-
-            z:
-                object.z || 0,
-
-            angle:
-                object.angle || 0,
-
-            width:
-                width,
-
-            height:
-                height,
-
-            deckId:
-                null,
-
-            locked:
-                false,
-
-            visible:
-                true,
-
-            closed:
-                false,
-
-            withoutOwner:
-                false,
-
-            freezed:
-                false,
-
-            type:
-                "object",
-
-            active:
-                false,
-
-            memo:
-                "",
-
-            imageUrl:
-                imageFilename,
-
-            coverImageUrl:
-                null,
-
-            clickAction:
-                null,
-
-            order:
-                0
-
-        };
-
-    }
-
-}
-
-
-        sceneEntities[sceneData.id] =
-            scene;
-
-    }
-
-
-    /*
-     * 最終 Room JSON
-     */
-
-    const data = {
-
-        meta: {
-
-            version: "1.1.0"
-
-        },
-
-        entities: {
-
-    room: room,
-
-    items:
-        itemEntities,
-
-    decks: {},
-
-    notes: {},
-
-    characters: {},
-
-    effects: {},
-
-    scenes:
-        sceneEntities,
-
-    savedatas: {},
-
-    snapshots: {}
-
-},
-
-        resources:
-            resources
-
-    };
-
-
-    return {
-
-        data: data,
-
-        imageFiles: imageFiles
-
-    };
-
-}
-
-
-
-
-
-/*
-  =========================================================
-  ZIP 匯出
-  =========================================================
-*/
-
-document
-    .getElementById("exportZIP")
-    .addEventListener(
-        "click",
-        async function(){
-
-            const status =
-                document.getElementById(
-                    "zipStatus"
-                );
-
-
-            try{
-
-                status.style.color =
-                    "#aaa";
-
-                status.textContent =
-                    "正在建立 CCFOLIA Room ZIP…";
+                scene.alignWithGrid =
+                    this.checked;
 
 
                 /*
-                  建立場景資料
-                */
+                 * 剛剛打開時，
+                 * 立即把現有物件全部吸到格線。
+                 */
+                if (this.checked) {
 
-                const result =
-                    await buildSceneRoom();
-
-
-                const roomData =
-                    result.data;
-
-
-                const imageFiles =
-                    result.imageFiles;
-
-
-                /*
-                  ------------------------------------------------
-                  __data.json
-                  ------------------------------------------------
-                */
-
-                const dataJSON =
-                    JSON.stringify(
-                        roomData,
-                        null,
-                        2
-                    ) + "\n";
-
-
-                const dataBytes =
-                    new TextEncoder().encode(
-                        dataJSON
-                    );
-
-
-                /*
-                  ------------------------------------------------
-                  data.json SHA-256
-                  ------------------------------------------------
-                */
-
-                const dataHash =
-                    await sha256Hex(
-                        dataBytes
-                    );
-
-
-                /*
-                  ------------------------------------------------
-                  .token
-                  ------------------------------------------------
-                */
-
-                const tokenText =
-                    "0." +
-                    dataHash;
-
-
-                const tokenBytes =
-                    new TextEncoder().encode(
-                        tokenText
-                    );
-
-
-                /*
-                  ------------------------------------------------
-                  ZIP Entries
-                  ------------------------------------------------
-                */
-
-                const zipEntries = [
-
-                    {
-
-                        name:
-                            "__data.json",
-
-                        data:
-                            dataBytes
-
-                    },
-
-                    {
-
-                        name:
-                            ".token",
-
-                        data:
-                            tokenBytes
-
-                    }
-
-                ];
-
-
-                /*
-                  ------------------------------------------------
-                  加入所有圖片
-                  ------------------------------------------------
-                */
-
-                for(
-                    const image
-                    of imageFiles.values()
-                ){
-
-                    zipEntries.push({
-
-                        name:
-                            image.name,
-
-                        data:
-                            image.data
-
-                    });
-
-                }
-
-
-                /*
-                  ------------------------------------------------
-                  建立 ZIP
-                  ------------------------------------------------
-                */
-
-                const zipBytes =
-                    createStoredZip(
-                        zipEntries
-                    );
-
-
-                const blob =
-                    new Blob(
-                        [zipBytes],
-                        {
-                            type:
-                                "application/zip"
+                    getObjects().forEach(
+                        object => {
+                            snapObjectToGrid(object);
                         }
                     );
 
+                    render();
 
-                /*
-                  ------------------------------------------------
-                  ZIP 檔名
-                  ------------------------------------------------
-                */
+                }
 
-                const downloadName =
-                    "cocofolia_scene-room.zip";
+            }
+        );
+
+        /* ==========================================
+           工具
+        ========================================== */
+
+        function createId() {
+
+            return Math.random()
+                .toString(16)
+                .slice(2) +
+                Date.now().toString(16);
+
+        }
 
 
-                const url =
-                    URL.createObjectURL(
-                        blob
+        function getSelectedObject() {
+
+            return getObjects().find(o => o.id === selectedId);
+
+        }
+
+        /* =========================================================
+           圖片標準化
+           ---------------------------------------------------------
+           所有輸入圖片最後一律重新編碼成 PNG。
+        
+           不論原本是：
+           PNG / JPG / JPEG / WEBP / GIF ...
+        
+           匯出時都會統一成：
+           PNG
+        
+           這樣可以避免：
+           1. 副檔名是 PNG，但實際仍保留不同來源編碼
+           2. 後續鏡像 / 透明度處理時格式不一致
+           ========================================================= */
+
+        const MAX_IMAGE_BYTES = 4.8 * 1024 * 1024;
+        const INITIAL_MAX_DIMENSION = 4096;
+
+
+        /* File → Data URL */
+        function fileToDataURL(file) {
+
+            return new Promise((resolve, reject) => {
+
+                const reader = new FileReader();
+
+                reader.onload = () =>
+                    resolve(reader.result);
+
+                reader.onerror = () =>
+                    reject(
+                        new Error("圖片讀取失敗。")
                     );
 
+                reader.readAsDataURL(file);
 
-                const a =
+            });
+
+        }
+
+
+        /* Data URL → Image */
+        function dataURLToImage(dataURL) {
+
+            return new Promise((resolve, reject) => {
+
+                const img = new Image();
+
+                img.onload = () =>
+                    resolve(img);
+
+                img.onerror = () =>
+                    reject(
+                        new Error("圖片解析失敗。")
+                    );
+
+                img.src = dataURL;
+
+            });
+
+        }
+
+
+        /* Canvas → PNG Data URL */
+        function canvasToPNG(canvas) {
+
+            return new Promise((resolve, reject) => {
+
+                canvas.toBlob(
+                    blob => {
+
+                        if (!blob) {
+
+                            reject(
+                                new Error(
+                                    "PNG 圖片產生失敗。"
+                                )
+                            );
+
+                            return;
+
+                        }
+
+                        const reader =
+                            new FileReader();
+
+                        reader.onload =
+                            () => resolve(
+                                reader.result
+                            );
+
+                        reader.onerror =
+                            () => reject(
+                                new Error(
+                                    "PNG 讀取失敗。"
+                                )
+                            );
+
+                        reader.readAsDataURL(blob);
+
+                    },
+                    "image/png"
+                );
+
+            });
+
+        }
+
+
+        /* 按比例限制最大尺寸 */
+        function getScaledSize(
+            width,
+            height,
+            maxDimension
+        ) {
+
+            const largest =
+                Math.max(width, height);
+
+            if (largest <= maxDimension) {
+
+                return {
+                    width,
+                    height
+                };
+
+            }
+
+            const scale =
+                maxDimension / largest;
+
+            return {
+
+                width:
+                    Math.max(
+                        1,
+                        Math.round(width * scale)
+                    ),
+
+                height:
+                    Math.max(
+                        1,
+                        Math.round(height * scale)
+                    )
+
+            };
+
+        }
+
+
+        /* =========================================================
+           原始圖片 → 統一 PNG
+        
+           注意：
+           這裡「一定」重新 Canvas → PNG。
+        
+           所以即使原圖本來就是 PNG，
+           也不再直接保留原始 PNG bytes。
+           ========================================================= */
+
+        async function prepareImage(file) {
+
+            const originalDataURL =
+                await fileToDataURL(file);
+
+            const img =
+                await dataURLToImage(
+                    originalDataURL
+                );
+
+
+            let size =
+                getScaledSize(
+                    img.naturalWidth,
+                    img.naturalHeight,
+                    INITIAL_MAX_DIMENSION
+                );
+
+
+            async function createPNG(
+                width,
+                height
+            ) {
+
+                const canvas =
                     document.createElement(
-                        "a"
+                        "canvas"
                     );
 
+                canvas.width =
+                    width;
 
-                a.href =
-                    url;
+                canvas.height =
+                    height;
 
-                a.download =
-                    downloadName;
+                const ctx =
+                    canvas.getContext("2d");
+
+                if (!ctx) {
+
+                    throw new Error(
+                        "瀏覽器無法建立 Canvas。"
+                    );
+
+                }
 
 
-                document.body.appendChild(
-                    a
-                );
-
-                a.click();
-
-                a.remove();
-
-
-                setTimeout(
-                    () =>
-                        URL.revokeObjectURL(
-                            url
-                        ),
-                    1000
+                /*
+                 * 保留透明背景
+                 */
+                ctx.clearRect(
+                    0,
+                    0,
+                    width,
+                    height
                 );
 
 
                 /*
-                  ------------------------------------------------
-                  完成訊息
-                  ------------------------------------------------
-                */
-
-                status.style.color =
-                    "#7bd99a";
-
-                status.textContent =
-                    "✓ CCFOLIA Room ZIP 已建立。\n" +
-                    "包含：__data.json、.token、" +
-                    imageFiles.size +
-                    " 張圖片。";
+                 * 所有圖片統一重新繪製
+                 */
+                ctx.drawImage(
+                    img,
+                    0,
+                    0,
+                    width,
+                    height
+                );
 
 
-            }catch(error){
+                const dataURL =
+                    await canvasToPNG(canvas);
+
+
+                return {
+
+                    dataURL,
+
+                    width,
+
+                    height,
+
+                    bytes:
+                        dataURLToBytes(
+                            dataURL
+                        )
+
+                };
+
+            }
+
+
+            let result =
+                await createPNG(
+                    size.width,
+                    size.height
+                );
+
+
+            /*
+             * PNG 超過 4.8 MB
+             * 只縮小尺寸，不改成 JPEG
+             */
+            while (
+                result.bytes.length >
+                MAX_IMAGE_BYTES
+            ) {
+
+                size = {
+
+                    width:
+                        Math.max(
+                            1,
+                            Math.floor(
+                                size.width * 0.9
+                            )
+                        ),
+
+                    height:
+                        Math.max(
+                            1,
+                            Math.floor(
+                                size.height * 0.9
+                            )
+                        )
+
+                };
+
+
+                result =
+                    await createPNG(
+                        size.width,
+                        size.height
+                    );
+
+
+                if (
+                    size.width <= 1 &&
+                    size.height <= 1
+                ) {
+
+                    break;
+
+                }
+
+            }
+
+
+            return {
+
+                dataURL:
+                    result.dataURL,
+
+                width:
+                    result.width,
+
+                height:
+                    result.height
+
+            };
+
+        }
+
+        /* =========================================================
+           物件圖片處理
+           ---------------------------------------------------------
+           將：
+        
+           flipX
+           flipY
+           opacity
+        
+           直接烘進 PNG 圖片。
+        
+           注意：
+           rotation 不在這裡處理。
+        
+           因為 Cocofolia 的 object 本身有 angle 欄位，
+           所以旋轉仍然由 Room JSON 的 angle 控制。
+           ========================================================= */
+
+        async function prepareObjectImage(object) {
+
+            if (!object || !object.imageUrl) {
+                return null;
+            }
+
+
+            const img =
+                await dataURLToImage(
+                    object.imageUrl
+                );
+
+
+            let size =
+                getScaledSize(
+                    img.naturalWidth,
+                    img.naturalHeight,
+                    INITIAL_MAX_DIMENSION
+                );
+
+
+            async function createPNG(
+                width,
+                height
+            ) {
+
+                const canvas =
+                    document.createElement(
+                        "canvas"
+                    );
+
+                canvas.width =
+                    width;
+
+                canvas.height =
+                    height;
+
+
+                const ctx =
+                    canvas.getContext("2d");
+
+                if (!ctx) {
+
+                    throw new Error(
+                        "瀏覽器無法建立 Canvas。"
+                    );
+
+                }
+
+
+                ctx.clearRect(
+                    0,
+                    0,
+                    width,
+                    height
+                );
+
+
+                /*
+                 * 透明度直接寫進 PNG Alpha
+                 */
+                ctx.globalAlpha =
+                    Math.max(
+                        0,
+                        Math.min(
+                            1,
+                            Number(object.opacity ?? 1)
+                        )
+                    );
+
+
+                /*
+                 * 以圖片中心為基準鏡像
+                 */
+                ctx.translate(
+                    width / 2,
+                    height / 2
+                );
+
+
+                ctx.scale(
+                    object.flipX ? -1 : 1,
+                    object.flipY ? -1 : 1
+                );
+
+
+                ctx.drawImage(
+                    img,
+                    -width / 2,
+                    -height / 2,
+                    width,
+                    height
+                );
+
+
+                ctx.globalAlpha = 1;
+
+
+                const dataURL =
+                    await canvasToPNG(
+                        canvas
+                    );
+
+
+                return {
+
+                    dataURL,
+
+                    bytes:
+                        dataURLToBytes(
+                            dataURL
+                        )
+
+                };
+
+            }
+
+
+            let result =
+                await createPNG(
+                    size.width,
+                    size.height
+                );
+
+
+            /*
+             * 超過大小就縮小圖片
+             */
+            while (
+                result.bytes.length >
+                MAX_IMAGE_BYTES
+            ) {
+
+                size = {
+
+                    width:
+                        Math.max(
+                            1,
+                            Math.floor(
+                                size.width * 0.9
+                            )
+                        ),
+
+                    height:
+                        Math.max(
+                            1,
+                            Math.floor(
+                                size.height * 0.9
+                            )
+                        )
+
+                };
+
+
+                result =
+                    await createPNG(
+                        size.width,
+                        size.height
+                    );
+
+
+                if (
+                    size.width <= 1 &&
+                    size.height <= 1
+                ) {
+
+                    break;
+
+                }
+
+            }
+
+
+            return {
+
+                dataURL:
+                    result.dataURL,
+
+                width:
+                    size.width,
+
+                height:
+                    size.height
+
+            };
+
+        }
+
+
+        /* ==========================================
+           新增畫面元件
+        ========================================== */
+
+        objectImageInput.addEventListener("change", async function (e) {
+
+            const file = e.target.files[0];
+
+            if (!file) return;
+
+            try {
+
+                const prepared =
+                    await prepareImage(file);
+
+                const img =
+                    await dataURLToImage(
+                        prepared.dataURL
+                    );
+
+                const scene =
+                    getCurrentScene();
+
+                if (!scene) return;
+
+
+                const object = {
+
+                    id:
+                        createId(),
+
+                    name:
+                        file.name,
+
+                    imageUrl:
+                        prepared.dataURL,
+
+                    x:
+                        100,
+
+                    y:
+                        100,
+
+                    z:
+                        sharedZCounter++,
+
+                    angle:
+                        0,
+
+                    width:
+                        img.naturalWidth,
+
+                    height:
+                        img.naturalHeight,
+
+                    opacity:
+                        1,
+
+                    flipX:
+                        false,
+
+                    flipY:
+                        false
+
+                };
+
+
+                sharedObjects.push(object);
+
+                if (
+                    scene.alignWithGrid === true
+                ) {
+                    snapObjectToGrid(object);
+                }
+
+                render();
+
+                selectObject(object.id);
+
+
+            } catch (error) {
 
                 console.error(
-                    "Room ZIP 建立失敗：",
+                    "圖片處理失敗：",
                     error
                 );
 
+                alert(
+                    "圖片處理失敗：\n" +
+                    error.message
+                );
 
-                status.style.color =
-                    "#ff7b7b";
+            }
 
-                status.textContent =
-                    "❌ Room ZIP 建立失敗：\n" +
-                    error.message;
+
+            /* 讓下次選同一張圖也能再次觸發 change */
+            this.value = "";
+
+        });
+
+
+        /* ==========================================
+           新增場景標誌元件
+        ========================================== */
+
+        markerImageInput.addEventListener("change", async function (e) {
+
+            const file = e.target.files[0];
+
+            if (!file) return;
+
+            try {
+
+                const prepared =
+                    await prepareImage(file);
+
+                const img =
+                    await dataURLToImage(
+                        prepared.dataURL
+                    );
+
+                const scene =
+                    getCurrentScene();
+
+                if (!scene) return;
+
+
+                const object = {
+
+                    id:
+                        createId(),
+
+                    name:
+                        file.name,
+
+                    imageUrl:
+                        prepared.dataURL,
+
+                    x:
+                        100,
+
+                    y:
+                        100,
+
+                    z:
+                        sharedZCounter++,
+
+                    angle:
+                        0,
+
+                    width:
+                        img.naturalWidth,
+
+                    height:
+                        img.naturalHeight,
+
+                    opacity:
+                        1,
+
+                    flipX:
+                        false,
+
+                    flipY:
+                        false,
+
+                    type:
+                        "sceneMarker"
+
+                };
+
+
+                scene.objects.push(object);
+
+                if (
+                    scene.alignWithGrid === true
+                ) {
+                    snapObjectToGrid(object);
+                }
+
+                render();
+
+                selectObject(object.id);
+
+
+            } catch (error) {
+
+                console.error(
+                    "圖片處理失敗：",
+                    error
+                );
+
+                alert(
+                    "圖片處理失敗：\n" +
+                    error.message
+                );
+
+            }
+
+
+            this.value = "";
+
+        });
+
+
+        /* ==========================================
+           設定背景
+        ========================================== */
+
+        backgroundImageInput.addEventListener(
+            "change",
+            async function (e) {
+
+                const file =
+                    e.target.files[0];
+
+                if (!file) return;
+
+                const scene =
+                    getCurrentScene();
+
+                if (!scene) return;
+
+
+                try {
+
+                    const prepared =
+                        await prepareImage(file);
+
+
+                    scene.backgroundData =
+                        prepared.dataURL;
+
+
+                    background.src =
+                        scene.backgroundData;
+
+
+                    updateDropHint();
+
+
+                } catch (error) {
+
+                    console.error(
+                        "背景圖片處理失敗：",
+                        error
+                    );
+
+                    alert(
+                        "背景圖片處理失敗：\n" +
+                        error.message
+                    );
+
+                }
+
+
+                this.value = "";
+
+            }
+        );
+
+
+        /* ==========================================
+           設定前景
+        ========================================== */
+
+        foregroundImageInput.addEventListener(
+            "change",
+            async function (e) {
+
+                const file =
+                    e.target.files[0];
+
+                if (!file) return;
+
+                const scene =
+                    getCurrentScene();
+
+                if (!scene) return;
+
+
+                try {
+
+                    const prepared =
+                        await prepareImage(file);
+
+
+                    scene.foregroundData =
+                        prepared.dataURL;
+
+                    if (!scene.foregroundWidth) {
+                        scene.foregroundWidth = 40;
+                    }
+
+                    if (!scene.foregroundHeight) {
+                        scene.foregroundHeight = 30;
+                    }
+
+                    foreground.src =
+                        scene.foregroundData;
+
+                    updateForegroundStyle();
+
+                    updateDropHint();
+
+
+                } catch (error) {
+
+                    console.error(
+                        "前景圖片處理失敗：",
+                        error
+                    );
+
+                    alert(
+                        "前景圖片處理失敗：\n" +
+                        error.message
+                    );
+
+                }
+
+
+                this.value = "";
+
+            }
+        );
+
+
+        /* ==========================================
+           四個按鈕
+        ========================================== */
+
+        document.getElementById("addImageObject")
+            .addEventListener("click", function () {
+
+                objectImageInput.click();
+
+            });
+
+
+        document.getElementById("addSceneMarker")
+            .addEventListener("click", function () {
+
+                markerImageInput.click();
+
+            });
+
+
+        document.getElementById("setBackground")
+            .addEventListener("click", function () {
+
+                backgroundImageInput.click();
+
+            });
+
+
+        document.getElementById("setForeground")
+            .addEventListener("click", function () {
+
+                foregroundImageInput.click();
+
+            });
+
+        /* ==========================================
+           清除背景
+        ========================================== */
+
+        document.getElementById("clearBackground")
+            .addEventListener("click", function () {
+
+                const scene = getCurrentScene();
+
+                if (!scene) return;
+
+                // 清除場景資料
+                scene.backgroundData = null;
+
+                // 清除畫面上的圖片
+                background.removeAttribute("src");
+
+                // 更新提示文字
+                updateDropHint();
+
+            });
+
+
+        /* ==========================================
+           清除前景
+        ========================================== */
+
+        document.getElementById("clearForeground")
+            .addEventListener("click", function () {
+
+                const scene = getCurrentScene();
+
+                if (!scene) return;
+
+                // 清除場景資料
+                scene.foregroundData = null;
+
+                // 清除畫面上的圖片
+                foreground.removeAttribute("src");
+
+                // 更新提示文字
+                updateDropHint();
+
+            });
+
+        /* ==========================================
+           Render
+        ========================================== */
+
+        function render() {
+
+            objectsContainer.innerHTML = "";
+
+            getObjects().forEach(object => {
+
+                const img = document.createElement("img");
+
+                img.className = "scene-object";
+
+                img.src = object.imageUrl;
+
+                img.dataset.id = object.id;
+
+                img.style.left = object.x + "px";
+
+                img.style.top = object.y + "px";
+
+                img.style.width = object.width + "px";
+
+                img.style.height = object.height + "px";
+
+                img.style.zIndex = object.z;
+
+                img.style.opacity = object.opacity;
+
+                img.style.transform =
+                    "rotate(" + object.angle + "deg) " +
+                    "scale(" +
+                    (object.flipX ? -1 : 1) +
+                    "," +
+                    (object.flipY ? -1 : 1) +
+                    ")";
+
+                img.addEventListener("mousedown", startDrag);
+
+                img.addEventListener("click", function (e) {
+
+                    e.stopPropagation();
+
+                    selectObject(object.id);
+
+                });
+
+                objectsContainer.appendChild(img);
+
+            });
+
+            updateList();
+
+            updateSelectionVisual();
+
+            updateDropHint();
+
+        }
+
+
+        /* ==========================================
+           物件列表
+        ========================================== */
+
+        function updateList() {
+
+            objectList.innerHTML = "";
+
+            const sorted = [...getObjects()].sort((a, b) => b.z - a.z);
+
+            sorted.forEach(object => {
+
+                const div = document.createElement("div");
+
+                div.className = "object-item";
+
+                if (object.id === selectedId) {
+
+                    div.classList.add("selected");
+
+                }
+
+                div.textContent =
+                    object.name +
+                    "  [Z:" +
+                    object.z +
+                    "]";
+
+                div.addEventListener("click", function () {
+
+                    selectObject(object.id);
+
+                });
+
+                objectList.appendChild(div);
+
+            });
+
+        }
+
+
+        function updateSelectionVisual() {
+
+            document.querySelectorAll(".scene-object")
+                .forEach(el => {
+
+                    el.classList.toggle(
+                        "selected",
+                        el.dataset.id === selectedId
+                    );
+
+                });
+
+        }
+
+
+        /* ==========================================
+           選取
+        ========================================== */
+
+        function selectObject(id) {
+
+            selectedId = id;
+
+            const object = getSelectedObject();
+
+            if (!object) {
+
+                editor.style.display = "none";
+
+                noSelection.style.display = "block";
+
+                return;
+
+            }
+
+            editor.style.display = "block";
+
+            noSelection.style.display = "none";
+
+            document.getElementById("nameInput").value =
+                object.name;
+
+            document.getElementById("xInput").value =
+                Math.round(object.x);
+
+            document.getElementById("yInput").value =
+                Math.round(object.y);
+
+            document.getElementById("widthInput").value =
+                Math.round(object.width);
+
+            document.getElementById("heightInput").value =
+                Math.round(object.height);
+
+            document.getElementById("angleInput").value =
+                object.angle;
+
+            document.getElementById("opacityInput").value =
+                object.opacity * 100;
+
+            document.getElementById("opacityValue").textContent =
+                Math.round(object.opacity * 100) + "%";
+
+
+            updateSelectionVisual();
+
+            updateList();
+
+        }
+
+        document
+            .getElementById("addScene")
+            .addEventListener(
+                "click",
+                addScene
+            );
+
+
+        document
+            .getElementById("deleteScene")
+            .addEventListener(
+                "click",
+                deleteCurrentScene
+            );
+
+
+        /* ==========================================
+           編輯欄位
+        ========================================== */
+
+        document.getElementById("nameInput")
+            .addEventListener("input", function () {
+
+                const object = getSelectedObject();
+
+                if (!object) return;
+
+                object.name = this.value;
+
+                render();
+
+            });
+
+
+        document.getElementById("xInput")
+            .addEventListener("input", function () {
+
+                const object = getSelectedObject();
+
+                if (!object) return;
+
+                const logicalX =
+                    Number(this.value) || 0;
+
+                object.x =
+                    SCENE_ORIGIN_X +
+                    logicalX * SCENE_GRID_SIZE -
+                    object.width / 2;
+
+                if (
+                    getCurrentScene()?.alignWithGrid === true
+                ) {
+                    snapObjectToGrid(object);
+                }
+
+                render();
+
+            });
+
+
+        document.getElementById("yInput")
+            .addEventListener("input", function () {
+
+                const object = getSelectedObject();
+
+                if (!object) return;
+
+                const logicalY =
+                    Number(this.value) || 0;
+
+                object.y =
+                    SCENE_ORIGIN_Y +
+                    logicalY * SCENE_GRID_SIZE -
+                    object.height / 2;
+
+                if (
+                    getCurrentScene()?.alignWithGrid === true
+                ) {
+                    snapObjectToGrid(object);
+                }
+
+                render();
+
+            });
+
+
+        document.getElementById("widthInput")
+            .addEventListener("input", function () {
+
+                const object = getSelectedObject();
+
+                if (!object) return;
+
+                object.width =
+                    Math.max(1, Number(this.value) || 1);
+
+                if (
+                    getCurrentScene()?.alignWithGrid === true
+                ) {
+                    snapObjectToGrid(object);
+                }
+
+                render();
+
+            });
+
+
+        document.getElementById("heightInput")
+            .addEventListener("input", function () {
+
+                const object = getSelectedObject();
+
+                if (!object) return;
+
+                object.height =
+                    Math.max(1, Number(this.value) || 1);
+
+                if (
+                    getCurrentScene()?.alignWithGrid === true
+                ) {
+                    snapObjectToGrid(object);
+                }
+
+                render();
+
+            });
+
+
+        document.getElementById("angleInput")
+            .addEventListener("input", function () {
+
+                const object = getSelectedObject();
+
+                if (!object) return;
+
+                object.angle =
+                    Number(this.value) || 0;
+
+                render();
+
+            });
+
+
+        document.getElementById("opacityInput")
+            .addEventListener("input", function () {
+
+                const object = getSelectedObject();
+
+                if (!object) return;
+
+                object.opacity =
+                    Number(this.value) / 100;
+
+                document.getElementById("opacityValue")
+                    .textContent =
+                    this.value + "%";
+
+                render();
+
+            });
+
+
+        /* ==========================================
+           鏡像
+        ========================================== */
+
+        document.getElementById("flipX")
+            .addEventListener("click", function () {
+
+                const object = getSelectedObject();
+
+                if (!object) return;
+
+                object.flipX = !object.flipX;
+
+                render();
+
+            });
+
+
+        document.getElementById("flipY")
+            .addEventListener("click", function () {
+
+                const object = getSelectedObject();
+
+                if (!object) return;
+
+                object.flipY = !object.flipY;
+
+                render();
+
+            });
+
+
+        /* ==========================================
+           圖層
+        ========================================== */
+
+        document.getElementById("moveUp")
+            .addEventListener("click", function () {
+
+                const objects = getObjects();
+                const object = getSelectedObject();
+
+                if (!object) return;
+
+                const sorted =
+                    [...objects].sort((a, b) => a.z - b.z);
+
+                const index =
+                    sorted.findIndex(
+                        o => o.id === object.id
+                    );
+
+                if (index === -1) return;
+
+                if (index < sorted.length - 1) {
+
+                    const other =
+                        sorted[index + 1];
+
+                    const temp =
+                        object.z;
+
+                    object.z =
+                        other.z;
+
+                    other.z =
+                        temp;
+
+                }
+
+                render();
+
+            });
+
+
+        document.getElementById("moveDown")
+            .addEventListener("click", function () {
+
+                const objects = getObjects();
+                const object = getSelectedObject();
+
+                if (!object) return;
+
+                const sorted =
+                    [...objects].sort((a, b) => a.z - b.z);
+
+                const index =
+                    sorted.findIndex(
+                        o => o.id === object.id
+                    );
+
+                if (index === -1) return;
+
+                if (index > 0) {
+
+                    const other =
+                        sorted[index - 1];
+
+                    const temp =
+                        object.z;
+
+                    object.z =
+                        other.z;
+
+                    other.z =
+                        temp;
+
+                }
+
+                render();
+
+            });
+
+
+        /* ==========================================
+           複製
+        ========================================== */
+
+        document.getElementById("duplicate")
+            .addEventListener("click", function () {
+
+                const object = getSelectedObject();
+
+                const scene = getCurrentScene();
+
+                if (!object || !scene) return;
+
+                const copy = {
+
+                    ...object,
+
+                    id:
+                        createId(),
+
+                    name:
+                        object.name + " 副本",
+
+                    x:
+                        object.x + 20,
+
+                    y:
+                        object.y + 20,
+
+                    z:
+                        object.type === "sceneMarker"
+                            ? ++scene.zCounter
+                            : ++sharedZCounter
+
+                };
+
+
+                /*
+                 * 場景標誌 → 留在目前 Scene
+                 *
+                 * 一般畫面元件 → 全場景共用
+                 */
+                if (object.type === "sceneMarker") {
+
+                    scene.objects.push(copy);
+
+                } else {
+
+                    sharedObjects.push(copy);
+
+                }
+
+
+                render();
+
+                selectObject(copy.id);
+
+                render();
+
+                selectObject(copy.id);
+
+            });
+
+
+        /* ==========================================
+           刪除
+        ========================================== */
+
+        document.getElementById("delete")
+            .addEventListener("click", function () {
+
+                if (!selectedId) return;
+
+                const scene =
+                    getCurrentScene();
+
+                let objects;
+
+                if (scene) {
+
+                    /*
+                     * 場景標誌 → 從目前 Scene 刪除
+                     */
+                    if (
+                        scene.objects.some(
+                            o => o.id === selectedId
+                        )
+                    ) {
+
+                        objects =
+                            scene.objects;
+
+                    }
+
+                    /*
+                     * 一般畫面元件
+                     * → 從全場景共用物件刪除
+                     */
+                    else {
+
+                        objects =
+                            sharedObjects;
+
+                    }
+
+                }
+
+
+                if (objects) {
+
+                    const index =
+                        objects.findIndex(
+                            o => o.id === selectedId
+                        );
+
+                    if (index !== -1) {
+
+                        objects.splice(index, 1);
+
+                    }
+
+                }
+
+                selectedId = null;
+
+                editor.style.display = "none";
+
+                noSelection.style.display = "block";
+
+                render();
+
+            });
+
+
+
+
+
+        /* ==========================================
+           格線吸附
+           位置 + 寬高都對齊 24px 格線
+        ========================================== */
+
+        /*
+         * Scene 座標：
+         *
+         * 畫布大小：
+         * 1920 × 1080
+         *
+         * 正中央：
+         * 960 × 540
+         *
+         * 每一格：
+         * 24 × 24 px
+         *
+         * Cocofolia 匯出時，
+         * 也是使用「物件中心」轉換成格數。
+         *
+         * 因此吸附時不要吸附物件左上角，
+         * 而是讓「物件中心」吸附到格線。
+         */
+
+        const SCENE_WIDTH = 1920;
+        const SCENE_HEIGHT = 1080;
+
+        const SCENE_ORIGIN_X =
+            SCENE_WIDTH / 2;
+
+        const SCENE_ORIGIN_Y =
+            SCENE_HEIGHT / 2;
+
+        const SCENE_GRID_SIZE = 24;
+
+        function snapObjectToGrid(object) {
+
+            if (!object) return;
+
+            /* --------------------------------------
+               ① 寬度 / 高度先變成 24 的整數倍
+            -------------------------------------- */
+
+            object.width =
+                Math.max(
+                    SCENE_GRID_SIZE,
+                    Math.round(
+                        object.width /
+                        SCENE_GRID_SIZE
+                    ) *
+                    SCENE_GRID_SIZE
+                );
+
+            object.height =
+                Math.max(
+                    SCENE_GRID_SIZE,
+                    Math.round(
+                        object.height /
+                        SCENE_GRID_SIZE
+                    ) *
+                    SCENE_GRID_SIZE
+                );
+
+
+            /* --------------------------------------
+               ② 以圖片「中心」對齊格線
+            -------------------------------------- */
+
+            const centerX =
+                object.x +
+                object.width / 2;
+
+            const centerY =
+                object.y +
+                object.height / 2;
+
+
+            const snappedCenterX =
+                SCENE_ORIGIN_X +
+                Math.round(
+                    (
+                        centerX -
+                        SCENE_ORIGIN_X
+                    ) /
+                    SCENE_GRID_SIZE
+                ) *
+                SCENE_GRID_SIZE;
+
+
+            const snappedCenterY =
+                SCENE_ORIGIN_Y +
+                Math.round(
+                    (
+                        centerY -
+                        SCENE_ORIGIN_Y
+                    ) /
+                    SCENE_GRID_SIZE
+                ) *
+                SCENE_GRID_SIZE;
+
+
+            /* --------------------------------------
+               ③ 重新計算左上角
+            -------------------------------------- */
+
+            object.x =
+                snappedCenterX -
+                object.width / 2;
+
+            object.y =
+                snappedCenterY -
+                object.height / 2;
+
+        }
+
+
+
+        /* ==========================================
+           拖曳
+        ========================================== */
+
+        let dragging = false;
+
+        let dragObject = null;
+
+        let dragStartX = 0;
+
+        let dragStartY = 0;
+
+        let objectStartX = 0;
+
+        let objectStartY = 0;
+
+
+        function startDrag(e) {
+
+            /*
+             * 防止同時啟動 Scene 平移
+             */
+            e.stopPropagation();
+
+            const id =
+                e.currentTarget.dataset.id;
+
+            selectObject(id);
+
+            const object =
+                getSelectedObject();
+
+            if (!object) return;
+
+            dragging = true;
+
+            dragObject = object;
+
+            dragStartX = e.clientX;
+
+            dragStartY = e.clientY;
+
+            objectStartX = object.x;
+
+            objectStartY = object.y;
+
+            e.preventDefault();
+
+        }
+
+
+        document.addEventListener("mousemove", function (e) {
+
+            if (!dragging || !dragObject) return;
+
+            const dx =
+                (e.clientX - dragStartX) /
+                viewScale;
+
+            const dy =
+                (e.clientY - dragStartY) /
+                viewScale;
+
+            dragObject.x =
+                objectStartX + dx;
+
+            dragObject.y =
+                objectStartY + dy;
+
+
+            /*
+             * 只有勾選「對齊格線」才吸附。
+             *
+             * 沒勾：
+             * 完全自由移動。
+             *
+             * 有勾：
+             * 自動吸附到最近的 24px 格線。
+             */
+            if (
+                getCurrentScene()?.alignWithGrid === true
+            ) {
+                snapObjectToGrid(dragObject);
+            }
+
+            render();
+
+        });
+
+
+        document.addEventListener("mouseup", function () {
+
+            dragging = false;
+
+            dragObject = null;
+
+        });
+
+
+        /* ==========================================
+           點空白處取消選取
+        ========================================== */
+
+        document.getElementById("scene")
+            .addEventListener("click", function (e) {
+
+                if (
+                    e.target === this ||
+                    e.target === background ||
+                    e.target === foreground
+                ) {
+
+                    selectedId = null;
+
+                    editor.style.display = "none";
+
+                    noSelection.style.display = "block";
+
+                    updateSelectionVisual();
+
+                    updateList();
+
+                }
+
+            });
+
+
+        /* ==========================================
+           提示文字
+        ========================================== */
+
+        function updateDropHint() {
+
+            dropHint.style.display =
+                (
+                    getObjects().length === 0 &&
+                    !getBackgroundData() &&
+                    !getForegroundData()
+                )
+                    ? "block"
+                    : "none";
+
+        }
+
+
+        /* =========================================================
+           CCFOLIA ROOM ZIP
+        ========================================================= */
+
+
+        /*
+          =========================================================
+          SHA-256
+          =========================================================
+        */
+
+        async function sha256Hex(bytes) {
+
+            const hashBuffer =
+                await crypto.subtle.digest(
+                    "SHA-256",
+                    bytes
+                );
+
+            const hashBytes =
+                new Uint8Array(hashBuffer);
+
+            return Array.from(hashBytes)
+                .map(
+                    b =>
+                        b.toString(16)
+                            .padStart(2, "0")
+                )
+                .join("");
+        }
+
+
+        /*
+          =========================================================
+          Data URL → Uint8Array
+          =========================================================
+        */
+
+        function dataURLToBytes(dataURL) {
+
+            if (!dataURL) {
+                return null;
+            }
+
+            const parts =
+                dataURL.split(",");
+
+            if (parts.length !== 2) {
+                throw new Error(
+                    "無法解析圖片 Data URL。"
+                );
+            }
+
+            const base64 =
+                parts[1];
+
+            const binary =
+                atob(base64);
+
+            const bytes =
+                new Uint8Array(
+                    binary.length
+                );
+
+            for (
+                let i = 0;
+                i < binary.length;
+                i++
+            ) {
+
+                bytes[i] =
+                    binary.charCodeAt(i);
+
+            }
+
+            return bytes;
+        }
+
+
+        /*
+          =========================================================
+          取得 Data URL MIME
+          =========================================================
+        */
+
+        function getDataURLMime(dataURL) {
+
+            if (!dataURL) {
+                return "image/png";
+            }
+
+            const match =
+                dataURL.match(
+                    /^data:([^;,]+)/
+                );
+
+            return match
+                ? match[1]
+                : "image/png";
+        }
+
+
+        /*
+          =========================================================
+          MIME → 副檔名
+          =========================================================
+        */
+
+        function getImageExtension(mime) {
+
+            switch (mime) {
+
+                case "image/jpeg":
+                    return ".jpg";
+
+                case "image/webp":
+                    return ".webp";
+
+                case "image/gif":
+                    return ".gif";
+
+                case "image/svg+xml":
+                    return ".svg";
+
+                case "image/png":
+                default:
+                    return ".png";
 
             }
 
         }
-    );
 
-
-/* ==========================================
-   PNG 輸出
-========================================== */
-
-document.getElementById("exportPNG")
-.addEventListener("click", async function() {
-
-    const canvas =
-        document.createElement("canvas");
-
-    const sceneWidth = 1920;
-const sceneHeight = 1080;
-
-    canvas.width = sceneWidth;
-
-    canvas.height = sceneHeight;
-
-    const ctx =
-        canvas.getContext("2d");
-
-
-    /*
-        背景
-    */
-
-    if (getBackgroundData()) {
-
-        const img =
-            await loadImage(getBackgroundData());
-
-        ctx.drawImage(
-            img,
-            0,
-            0,
-            sceneWidth,
-            sceneHeight
-        );
-
-    }
-
-
-    /*
-        物件
-    */
-
-    const sorted =
-        [...getObjects()].sort(
-            (a,b) => a.z - b.z
-        );
-
-
-    for (const object of sorted) {
-
-        const img =
-            await loadImage(object.imageUrl);
-
-        ctx.save();
-
-        ctx.globalAlpha =
-            object.opacity;
-
-        ctx.translate(
-            object.x + object.width / 2,
-            object.y + object.height / 2
-        );
-
-        ctx.rotate(
-            object.angle *
-            Math.PI /
-            180
-        );
-
-        ctx.scale(
-            object.flipX ? -1 : 1,
-            object.flipY ? -1 : 1
-        );
-
-        ctx.drawImage(
-            img,
-            -object.width / 2,
-            -object.height / 2,
-            object.width,
-            object.height
-        );
-
-        ctx.restore();
-
-    }
-
-
-/*
-    前景
-*/
-
-if (getForegroundData()) {
-
-    const scene =
-        getCurrentScene();
-
-    const img =
-        await loadImage(
-            getForegroundData()
-        );
-
-    const gridSize = 24;
-
-const foregroundWidth =
-    (Number(scene.foregroundWidth) || 40)
-    * gridSize;
-
-const foregroundHeight =
-    (Number(scene.foregroundHeight) || 30)
-    * gridSize;
-
-    if (scene.foregroundFit === true) {
 
         /*
-         * 等比例縮放 + 中央裁切
-         */
+          =========================================================
+          Uint8Array 合併
+          =========================================================
+        */
 
-        const scale =
-            Math.max(
-                foregroundWidth / img.width,
-                foregroundHeight / img.height
+        function concatBytes(...arrays) {
+
+            let total = 0;
+
+            arrays.forEach(
+                array => {
+                    total += array.length;
+                }
             );
 
-        const drawWidth =
-            img.width * scale;
+            const result =
+                new Uint8Array(total);
 
-        const drawHeight =
-            img.height * scale;
+            let offset = 0;
 
-        const offsetX =
-            (foregroundWidth - drawWidth) / 2;
+            arrays.forEach(
+                array => {
 
-        const offsetY =
-            (foregroundHeight - drawHeight) / 2;
+                    result.set(
+                        array,
+                        offset
+                    );
 
-        const foregroundX =
-    (sceneWidth - foregroundWidth) / 2;
+                    offset +=
+                        array.length;
 
-const foregroundY =
-    (sceneHeight - foregroundHeight) / 2;
-
-ctx.drawImage(
-    img,
-    foregroundX,
-    foregroundY,
-    foregroundWidth,
-    foregroundHeight
-);
-
-    } else {
-
-        /*
-         * 不勾選：
-         * 直接拉伸到指定前景尺寸
-         */
-
-        ctx.drawImage(
-            img,
-            0,
-            0,
-            foregroundWidth,
-            foregroundHeight
-        );
-
-    }
-
-}
-
-    canvas.toBlob(function(blob) {
-
-        const url =
-            URL.createObjectURL(blob);
-
-        const a =
-            document.createElement("a");
-
-        a.href = url;
-
-        a.download =
-            "cocofolia_scene.png";
-
-        a.click();
-
-        URL.revokeObjectURL(url);
-
-    });
-
-});
-
-
-function loadImage(src) {
-
-    return new Promise((resolve, reject) => {
-
-        const img =
-            new Image();
-
-        img.onload = () =>
-            resolve(img);
-
-        img.onerror = reject;
-
-        img.src = src;
-
-    });
-
-}
-
-
-/* ==========================================
-   初始化
-========================================== */
-
-if (scenes.length === 0) {
-
-    const firstScene =
-        createScene("場景 1");
-
-    scenes.push(firstScene);
-
-    currentSceneId =
-        firstScene.id;
-
-}
-
-renderSceneList();
-
-loadCurrentScene();
-
-render();
-
-/* =========================================================
-   VIEWPORT
-   只控制「觀看方式」
-   不會修改物件座標
-========================================================= */
-
-let viewScale = 1;
-let viewX = 0;
-let viewY = 0;
-
-let viewDragging = false;
-
-let viewDragStartX = 0;
-let viewDragStartY = 0;
-
-let viewStartX = 0;
-let viewStartY = 0;
-
-const MIN_VIEW_SCALE = 0.1;
-const MAX_VIEW_SCALE = 2;
-
-
-/* ---------------------------------------------------------
-   更新畫布顯示
---------------------------------------------------------- */
-
-function updateViewport(){
-
-    const scene =
-        document.getElementById("scene");
-
-    const zoomValue =
-        document.getElementById("zoomValue");
-
-    if(!scene) return;
-
-    scene.style.transform =
-        `translate(${viewX}px, ${viewY}px) scale(${viewScale})`;
-
-    if(zoomValue){
-
-        zoomValue.textContent =
-            Math.round(viewScale * 100) + "%";
-
-    }
-
-}
-
-
-/* ---------------------------------------------------------
-   限制畫布不要完全跑出工作區
---------------------------------------------------------- */
-
-function clampViewport(){
-
-    const workspace =
-        document.getElementById("workspace");
-
-    if(!workspace) return;
-
-    const vw =
-        workspace.clientWidth;
-
-    const vh =
-        workspace.clientHeight;
-
-    const canvasWidth =
-        1920 * viewScale;
-
-    const canvasHeight =
-        1080 * viewScale;
-
-    /*
-     * 至少保留一部分畫布在畫面內
-     */
-    const minVisible = 120;
-
-    const maxX =
-        Math.max(
-            0,
-            (canvasWidth + vw) / 2 - minVisible
-        );
-
-    const maxY =
-        Math.max(
-            0,
-            (canvasHeight + vh) / 2 - minVisible
-        );
-
-    viewX =
-        Math.max(
-            -maxX,
-            Math.min(maxX, viewX)
-        );
-
-    viewY =
-        Math.max(
-            -maxY,
-            Math.min(maxY, viewY)
-        );
-
-}
-
-
-/* ---------------------------------------------------------
-   設定縮放
---------------------------------------------------------- */
-
-function setViewport(scale, x = viewX, y = viewY){
-
-    viewScale =
-        Math.max(
-            MIN_VIEW_SCALE,
-            Math.min(MAX_VIEW_SCALE, scale)
-        );
-
-    viewX = x;
-    viewY = y;
-
-    clampViewport();
-
-    updateViewport();
-
-}
-
-
-/* ---------------------------------------------------------
-   Fit：整張 1920 × 1080 顯示在工作區
---------------------------------------------------------- */
-
-function fitCanvas(){
-
-    const workspace =
-        document.getElementById("workspace");
-
-    if(!workspace) return;
-
-    const vw =
-        workspace.clientWidth;
-
-    const vh =
-        workspace.clientHeight;
-
-    const padding = 40;
-
-    const scaleX =
-        (vw - padding) / 1920;
-
-    const scaleY =
-        (vh - padding) / 1080;
-
-    viewScale =
-        Math.min(scaleX, scaleY);
-
-    viewScale =
-        Math.max(
-            MIN_VIEW_SCALE,
-            Math.min(MAX_VIEW_SCALE, viewScale)
-        );
-
-    viewX = 0;
-    viewY = 0;
-
-    updateViewport();
-
-}
-
-
-/* ---------------------------------------------------------
-   滾輪縮放
---------------------------------------------------------- */
-
-document
-.getElementById("workspace")
-.addEventListener(
-    "wheel",
-    function(e){
-
-        e.preventDefault();
-
-        const rect =
-            this.getBoundingClientRect();
-
-        /*
-         * 滑鼠相對於工作區中心
-         */
-        const mouseX =
-            e.clientX -
-            rect.left -
-            rect.width / 2;
-
-        const mouseY =
-            e.clientY -
-            rect.top -
-            rect.height / 2;
-
-        /*
-         * 找到滑鼠目前對應到 Scene 的哪個位置
-         */
-        const canvasX =
-            (mouseX - viewX) /
-            viewScale;
-
-        const canvasY =
-            (mouseY - viewY) /
-            viewScale;
-
-        const factor =
-            e.deltaY < 0
-                ? 1.1
-                : 0.9;
-
-        const newScale =
-            Math.max(
-                MIN_VIEW_SCALE,
-                Math.min(
-                    MAX_VIEW_SCALE,
-                    viewScale * factor
-                )
+                }
             );
 
-        /*
-         * 保持滑鼠指向的位置不動
-         */
-        viewScale = newScale;
+            return result;
+        }
 
-        viewX =
-            mouseX -
-            canvasX * newScale;
-
-        viewY =
-            mouseY -
-            canvasY * newScale;
-
-        clampViewport();
-
-        updateViewport();
-
-    },
-    { passive:false }
-);
-
-
-/* ---------------------------------------------------------
-   放大
---------------------------------------------------------- */
-
-document
-.getElementById("zoomIn")
-.addEventListener("click", function(){
-
-    setViewport(
-        viewScale * 1.1
-    );
-
-});
-
-
-/* ---------------------------------------------------------
-   縮小
---------------------------------------------------------- */
-
-document
-.getElementById("zoomOut")
-.addEventListener("click", function(){
-
-    setViewport(
-        viewScale * 0.9
-    );
-
-});
-
-
-/* ---------------------------------------------------------
-   Fit
---------------------------------------------------------- */
-
-document
-.getElementById("fitCanvas")
-.addEventListener("click", function(){
-
-    fitCanvas();
-
-});
-
-
-/* ---------------------------------------------------------
-   100%
---------------------------------------------------------- */
-
-document
-.getElementById("resetView")
-.addEventListener("click", function(){
-
-    setViewport(
-        1,
-        0,
-        0
-    );
-
-});
-
-
-/* ---------------------------------------------------------
-   空白區域拖曳
---------------------------------------------------------- */
-
-sceneCanvas.addEventListener(
-    "mousedown",
-    function(e){
 
         /*
-         * 只有點到 Scene 空白處
+          =========================================================
+          CRC-32
+          =========================================================
+        */
+
+        function crc32(bytes) {
+
+            let crc =
+                0xffffffff;
+
+            for (
+                let i = 0;
+                i < bytes.length;
+                i++
+            ) {
+
+                crc ^= bytes[i];
+
+                for (
+                    let j = 0;
+                    j < 8;
+                    j++
+                ) {
+
+                    crc =
+                        (crc >>> 1) ^
+                        (
+                            0xedb88320 &
+                            -(crc & 1)
+                        );
+
+                }
+
+            }
+
+            return (
+                crc ^ 0xffffffff
+            ) >>> 0;
+        }
+
+
+        /*
+          =========================================================
+          Little Endian 16-bit
+          =========================================================
+        */
+
+        function u16(n) {
+
+            return new Uint8Array([
+
+                n & 0xff,
+
+                (n >>> 8) & 0xff
+
+            ]);
+
+        }
+
+
+        /*
+          =========================================================
+          Little Endian 32-bit
+          =========================================================
+        */
+
+        function u32(n) {
+
+            return new Uint8Array([
+
+                n & 0xff,
+
+                (n >>> 8) & 0xff,
+
+                (n >>> 16) & 0xff,
+
+                (n >>> 24) & 0xff
+
+            ]);
+
+        }
+
+
+        /*
+          =========================================================
+          建立 Store ZIP
+          =========================================================
+        
+          ZIP 結構：
+        
+              __data.json
+              .token
+              <sha256>.png
+              <sha256>.png
+              ...
+        
+          與角色製作器使用同一種 ZIP 結構。
+        */
+
+        function createStoredZip(entries) {
+
+            const encoder =
+                new TextEncoder();
+
+            const localParts = [];
+
+            const centralParts = [];
+
+            let offset = 0;
+
+
+            for (
+                const entry of entries
+            ) {
+
+                const nameBytes =
+                    encoder.encode(
+                        entry.name
+                    );
+
+                const data =
+                    entry.data instanceof Uint8Array
+                        ? entry.data
+                        : new Uint8Array(
+                            entry.data
+                        );
+
+
+                const crc =
+                    crc32(data);
+
+
+                /*
+                  Local File Header
+                */
+
+                const localHeader =
+                    concatBytes(
+
+                        u32(0x04034b50),
+
+                        u16(20),
+
+                        u16(0x0800),
+
+                        u16(0),
+
+                        u16(0),
+
+                        u16(0),
+
+                        u32(crc),
+
+                        u32(data.length),
+
+                        u32(data.length),
+
+                        u16(nameBytes.length),
+
+                        u16(0),
+
+                        nameBytes
+
+                    );
+
+
+                localParts.push(
+                    localHeader,
+                    data
+                );
+
+
+                /*
+                  Central Directory Header
+                */
+
+                const centralHeader =
+                    concatBytes(
+
+                        u32(0x02014b50),
+
+                        u16(20),
+
+                        u16(20),
+
+                        u16(0x0800),
+
+                        u16(0),
+
+                        u16(0),
+
+                        u16(0),
+
+                        u32(crc),
+
+                        u32(data.length),
+
+                        u32(data.length),
+
+                        u16(nameBytes.length),
+
+                        u16(0),
+
+                        u16(0),
+
+                        u16(0),
+
+                        u16(0),
+
+                        u32(0),
+
+                        u32(offset),
+
+                        nameBytes
+
+                    );
+
+
+                centralParts.push(
+                    centralHeader
+                );
+
+
+                offset +=
+                    localHeader.length +
+                    data.length;
+
+            }
+
+
+            const localData =
+                concatBytes(
+                    ...localParts
+                );
+
+            const centralData =
+                concatBytes(
+                    ...centralParts
+                );
+
+
+            /*
+              End Of Central Directory
+            */
+
+            const endRecord =
+                concatBytes(
+
+                    u32(0x06054b50),
+
+                    u16(0),
+
+                    u16(0),
+
+                    u16(entries.length),
+
+                    u16(entries.length),
+
+                    u32(centralData.length),
+
+                    u32(localData.length),
+
+                    u16(0)
+
+                );
+
+
+            return concatBytes(
+
+                localData,
+
+                centralData,
+
+                endRecord
+
+            );
+
+        }
+
+
+        /* =========================================================
+           建立 CCFOLIA Room JSON
+           ========================================================= */
+
+        async function buildSceneRoom() {
+
+            const resources = {};
+
+            const imageFiles = new Map();
+
+            /*
+             * Cocofolia：
+             * 一般畫面元件放在 entities.items
+             */
+            const itemEntities = {};
+
+
+            async function addImage(dataURL) {
+
+                if (!dataURL) {
+                    return null;
+                }
+
+
+                const bytes =
+                    dataURLToBytes(dataURL);
+
+                if (!bytes) {
+                    return null;
+                }
+
+
+                const hash =
+                    await sha256Hex(bytes);
+
+
+                /*
+                 * 所有圖片統一使用 PNG
+                 */
+                const filename =
+                    hash + ".png";
+
+
+                if (!imageFiles.has(filename)) {
+
+                    imageFiles.set(
+                        filename,
+                        {
+                            name:
+                                filename,
+
+                            data:
+                                bytes
+                        }
+                    );
+
+                }
+
+
+                resources[filename] = {
+
+                    type:
+                        "image/png"
+
+                };
+
+
+                return filename;
+
+            }
+
+            /*
+             * Room 本身不再儲存背景 / 前景
+             */
+
+            const room = {
+
+                backgroundUrl: null,
+
+                foregroundUrl: null,
+
+                sceneId:
+                    scenes.length > 0
+                        ? scenes[0].id
+                        : null
+
+            };
+
+
+            /*
+             * 建立所有 Scene
+             */
+
+            const sceneEntities = {};
+
+            /*
+         * =====================================================
+         * 全場景共用的畫面元件
+         *
+         * → entities.items
+         * =====================================================
          */
-        if(e.target !== sceneCanvas) return;
 
-        if(e.button !== 0) return;
+            for (const object of sharedObjects) {
 
-        viewDragging = true;
+                /*
+                 * 將鏡像 / 透明度直接烘進 PNG
+                 */
+                const prepared =
+                    await prepareObjectImage(
+                        object
+                    );
 
-        viewDragStartX = e.clientX;
-        viewDragStartY = e.clientY;
+                const imageFilename =
+                    await addImage(
+                        prepared
+                            ? prepared.dataURL
+                            : object.imageUrl
+                    );
 
-        viewStartX = viewX;
-        viewStartY = viewY;
+                const x =
+                    (
+                        object.x +
+                        object.width / 2 -
+                        960
+                    ) / 24;
 
-        sceneCanvas.style.cursor =
-    "grabbing";
+                const y =
+                    (
+                        object.y +
+                        object.height / 2 -
+                        540
+                    ) / 24;
 
-        e.preventDefault();
+                const width =
+                    object.width / 24;
 
-    }
-);
+                const height =
+                    object.height / 24;
+
+                itemEntities[object.id] = {
+
+                    x:
+                        x,
+
+                    y:
+                        y,
+
+                    z:
+                        object.z || 0,
+
+                    angle:
+                        object.angle || 0,
+
+                    width:
+                        width,
+
+                    height:
+                        height,
+
+                    deckId:
+                        null,
+
+                    locked:
+                        true,
+
+                    visible:
+                        true,
+
+                    closed:
+                        false,
+
+                    withoutOwner:
+                        false,
+
+                    freezed:
+                        false,
+
+                    type:
+                        "object",
+
+                    active:
+                        true,
+
+                    memo:
+                        "",
+
+                    imageUrl:
+                        imageFilename,
+
+                    coverImageUrl:
+                        null,
+
+                    clickAction:
+                        null,
+
+                    order:
+                        0
+
+                };
+
+            }
 
 
-/* ---------------------------------------------------------
-   平移
---------------------------------------------------------- */
+            for (const sceneData of scenes) {
 
-document.addEventListener(
-    "mousemove",
-    function(e){
+                const scene = {
 
-        if(!viewDragging) return;
+                    name:
+                        sceneData.name,
 
-        viewX =
-            viewStartX +
-            (e.clientX - viewDragStartX);
+                    backgroundUrl:
+                        await addImage(
+                            sceneData.backgroundData
+                        ),
 
-        viewY =
-            viewStartY +
-            (e.clientY - viewDragStartY);
+                    foregroundUrl:
+                        await addImage(
+                            sceneData.foregroundData
+                        ),
 
-        clampViewport();
+                    /*
+                     * 前景尺寸：
+                     * 編輯器使用「格數」儲存
+                     * 例如 40 × 30
+                     */
+                    fieldWidth:
+                        Number(sceneData.foregroundWidth) || 40,
 
-        updateViewport();
+                    fieldHeight:
+                        Number(sceneData.foregroundHeight) || 30,
 
-    }
-);
+                    /*
+                     * true  = 裁切符合前景尺寸
+                     * false = 直接拉伸
+                     *
+                     * Cocofolia：
+                     * cover = 裁切
+                     * fill  = 拉伸
+                     */
+                    fieldObjectFit:
+                        sceneData.foregroundFit === true
+                            ? "cover"
+                            : "fill",
 
+                    /*
+                     * 對齊格線
+                     */
+                    alignWithGrid: sceneData.alignWithGrid === true,
 
-/* ---------------------------------------------------------
-   結束平移
---------------------------------------------------------- */
+                    displayGrid: false,
 
-document.addEventListener(
-    "mouseup",
-    function(){
+                    gridSize: 1,
 
-        if(!viewDragging) return;
+                    markers: {},
 
-        viewDragging = false;
+                    text: "",
 
-        sceneCanvas.style.cursor = "";
+                    locked: false,
 
-    }
-);
+                    order:
+                        scenes.indexOf(sceneData)
 
-
-/* ---------------------------------------------------------
-   視窗大小改變
---------------------------------------------------------- */
-
-window.addEventListener(
-    "resize",
-    function(){
-
-        clampViewport();
-
-        updateViewport();
-
-    }
-);
+                };
 
 
-/* ---------------------------------------------------------
-   初始 Fit
---------------------------------------------------------- */
+                /*
+                 * =====================================================
+                 * 匯出這個場景裡的物件
+                 *
+                 * Cocofolia：
+                 *
+                 * 一般「畫面元件」
+                 * → entities.items
+                 *
+                 * 「場景標誌元件」
+                 * → scenes[sceneId].markers
+                 * =====================================================
+                 */
 
-requestAnimationFrame(
-    function(){
+                for (
+                    const object
+                    of sceneData.objects
+                ) {
 
-        fitCanvas();
+                    /*
+                     * 將鏡像 / 透明度直接烘進 PNG
+                     */
+                    const prepared =
+                        await prepareObjectImage(
+                            object
+                        );
 
-    }
-);
+                    const imageFilename =
+                        await addImage(
+                            prepared
+                                ? prepared.dataURL
+                                : object.imageUrl
+                        );
 
-</script>
+
+                    const x =
+                        (
+                            object.x +
+                            object.width / 2 -
+                            960
+                        ) / 24;
+
+
+                    const y =
+                        (
+                            object.y +
+                            object.height / 2 -
+                            540
+                        ) / 24;
+
+
+                    const width =
+                        object.width / 24;
+
+
+                    const height =
+                        object.height / 24;
+
+
+                    const objectId =
+                        object.id ||
+                        crypto.randomUUID()
+                            .replace(/-/g, "")
+                            .slice(0, 12);
+
+
+                    /*
+                     * =============================================
+                     * ① 場景標誌元件
+                     *
+                     * type === "sceneMarker"
+                     * → 存進目前 Scene 的 markers
+                     * =============================================
+                     */
+
+                    if (object.type === "sceneMarker") {
+
+                        scene.markers[objectId] = {
+
+                            x:
+                                x,
+
+                            y:
+                                y,
+
+                            z:
+                                object.z || 0,
+
+                            width:
+                                width,
+
+                            height:
+                                height,
+
+                            locked:
+                                false,
+
+                            freezed:
+                                false,
+
+                            text:
+                                "",
+
+                            imageUrl:
+                                imageFilename,
+
+                            clickAction:
+                                null
+
+                        };
+
+                    }
+
+
+                    /*
+                     * =============================================
+                     * ② 一般畫面元件
+                     *
+                     * 不是 sceneMarker
+                     * → 存進 entities.items
+                     * =============================================
+                     */
+
+                    else {
+
+                        itemEntities[objectId] = {
+
+                            x:
+                                x,
+
+                            y:
+                                y,
+
+                            z:
+                                object.z || 0,
+
+                            angle:
+                                object.angle || 0,
+
+                            width:
+                                width,
+
+                            height:
+                                height,
+
+                            deckId:
+                                null,
+
+                            locked:
+                                false,
+
+                            visible:
+                                true,
+
+                            closed:
+                                false,
+
+                            withoutOwner:
+                                false,
+
+                            freezed:
+                                false,
+
+                            type:
+                                "object",
+
+                            active:
+                                false,
+
+                            memo:
+                                "",
+
+                            imageUrl:
+                                imageFilename,
+
+                            coverImageUrl:
+                                null,
+
+                            clickAction:
+                                null,
+
+                            order:
+                                0
+
+                        };
+
+                    }
+
+                }
+
+
+                sceneEntities[sceneData.id] =
+                    scene;
+
+            }
+
+
+            /*
+             * 最終 Room JSON
+             */
+
+            const data = {
+
+                meta: {
+
+                    version: "1.1.0"
+
+                },
+
+                entities: {
+
+                    room: room,
+
+                    items:
+                        itemEntities,
+
+                    decks: {},
+
+                    notes: {},
+
+                    characters: {},
+
+                    effects: {},
+
+                    scenes:
+                        sceneEntities,
+
+                    savedatas: {},
+
+                    snapshots: {}
+
+                },
+
+                resources:
+                    resources
+
+            };
+
+
+            return {
+
+                data: data,
+
+                imageFiles: imageFiles
+
+            };
+
+        }
+
+
+
+
+
+        /*
+          =========================================================
+          ZIP 匯出
+          =========================================================
+        */
+
+        document
+            .getElementById("exportZIP")
+            .addEventListener(
+                "click",
+                async function () {
+
+                    const status =
+                        document.getElementById(
+                            "zipStatus"
+                        );
+
+
+                    try {
+
+                        status.style.color =
+                            "#aaa";
+
+                        status.textContent =
+                            "正在建立 CCFOLIA Room ZIP…";
+
+
+                        /*
+                          建立場景資料
+                        */
+
+                        const result =
+                            await buildSceneRoom();
+
+
+                        const roomData =
+                            result.data;
+
+
+                        const imageFiles =
+                            result.imageFiles;
+
+
+                        /*
+                          ------------------------------------------------
+                          __data.json
+                          ------------------------------------------------
+                        */
+
+                        const dataJSON =
+                            JSON.stringify(
+                                roomData,
+                                null,
+                                2
+                            ) + "\n";
+
+
+                        const dataBytes =
+                            new TextEncoder().encode(
+                                dataJSON
+                            );
+
+
+                        /*
+                          ------------------------------------------------
+                          data.json SHA-256
+                          ------------------------------------------------
+                        */
+
+                        const dataHash =
+                            await sha256Hex(
+                                dataBytes
+                            );
+
+
+                        /*
+                          ------------------------------------------------
+                          .token
+                          ------------------------------------------------
+                        */
+
+                        const tokenText =
+                            "0." +
+                            dataHash;
+
+
+                        const tokenBytes =
+                            new TextEncoder().encode(
+                                tokenText
+                            );
+
+
+                        /*
+                          ------------------------------------------------
+                          ZIP Entries
+                          ------------------------------------------------
+                        */
+
+                        const zipEntries = [
+
+                            {
+
+                                name:
+                                    "__data.json",
+
+                                data:
+                                    dataBytes
+
+                            },
+
+                            {
+
+                                name:
+                                    ".token",
+
+                                data:
+                                    tokenBytes
+
+                            }
+
+                        ];
+
+
+                        /*
+                          ------------------------------------------------
+                          加入所有圖片
+                          ------------------------------------------------
+                        */
+
+                        for (
+                            const image
+                            of imageFiles.values()
+                        ) {
+
+                            zipEntries.push({
+
+                                name:
+                                    image.name,
+
+                                data:
+                                    image.data
+
+                            });
+
+                        }
+
+
+                        /*
+                          ------------------------------------------------
+                          建立 ZIP
+                          ------------------------------------------------
+                        */
+
+                        const zipBytes =
+                            createStoredZip(
+                                zipEntries
+                            );
+
+
+                        const blob =
+                            new Blob(
+                                [zipBytes],
+                                {
+                                    type:
+                                        "application/zip"
+                                }
+                            );
+
+
+                        /*
+                          ------------------------------------------------
+                          ZIP 檔名
+                          ------------------------------------------------
+                        */
+
+                        const downloadName =
+                            "cocofolia_scene-room.zip";
+
+
+                        const url =
+                            URL.createObjectURL(
+                                blob
+                            );
+
+
+                        const a =
+                            document.createElement(
+                                "a"
+                            );
+
+
+                        a.href =
+                            url;
+
+                        a.download =
+                            downloadName;
+
+
+                        document.body.appendChild(
+                            a
+                        );
+
+                        a.click();
+
+                        a.remove();
+
+
+                        setTimeout(
+                            () =>
+                                URL.revokeObjectURL(
+                                    url
+                                ),
+                            1000
+                        );
+
+
+                        /*
+                          ------------------------------------------------
+                          完成訊息
+                          ------------------------------------------------
+                        */
+
+                        status.style.color =
+                            "#7bd99a";
+
+                        status.textContent =
+                            "✓ CCFOLIA Room ZIP 已建立。\n" +
+                            "包含：__data.json、.token、" +
+                            imageFiles.size +
+                            " 張圖片。";
+
+
+                    } catch (error) {
+
+                        console.error(
+                            "Room ZIP 建立失敗：",
+                            error
+                        );
+
+
+                        status.style.color =
+                            "#ff7b7b";
+
+                        status.textContent =
+                            "❌ Room ZIP 建立失敗：\n" +
+                            error.message;
+
+                    }
+
+                }
+            );
+
+
+        /* ==========================================
+           PNG 輸出
+        ========================================== */
+
+        document.getElementById("exportPNG")
+            .addEventListener("click", async function () {
+
+                const canvas =
+                    document.createElement("canvas");
+
+                const sceneWidth = 1920;
+                const sceneHeight = 1080;
+
+                canvas.width = sceneWidth;
+
+                canvas.height = sceneHeight;
+
+                const ctx =
+                    canvas.getContext("2d");
+
+
+                /*
+                    背景
+                */
+
+                if (getBackgroundData()) {
+
+                    const img =
+                        await loadImage(getBackgroundData());
+
+                    ctx.drawImage(
+                        img,
+                        0,
+                        0,
+                        sceneWidth,
+                        sceneHeight
+                    );
+
+                }
+
+
+                /*
+                    物件
+                */
+
+                const sorted =
+                    [...getObjects()].sort(
+                        (a, b) => a.z - b.z
+                    );
+
+
+                for (const object of sorted) {
+
+                    const img =
+                        await loadImage(object.imageUrl);
+
+                    ctx.save();
+
+                    ctx.globalAlpha =
+                        object.opacity;
+
+                    ctx.translate(
+                        object.x + object.width / 2,
+                        object.y + object.height / 2
+                    );
+
+                    ctx.rotate(
+                        object.angle *
+                        Math.PI /
+                        180
+                    );
+
+                    ctx.scale(
+                        object.flipX ? -1 : 1,
+                        object.flipY ? -1 : 1
+                    );
+
+                    ctx.drawImage(
+                        img,
+                        -object.width / 2,
+                        -object.height / 2,
+                        object.width,
+                        object.height
+                    );
+
+                    ctx.restore();
+
+                }
+
+
+                /*
+                    前景
+                */
+
+                if (getForegroundData()) {
+
+                    const scene =
+                        getCurrentScene();
+
+                    const img =
+                        await loadImage(
+                            getForegroundData()
+                        );
+
+                    const gridSize = 24;
+
+                    const foregroundWidth =
+                        (Number(scene.foregroundWidth) || 40)
+                        * gridSize;
+
+                    const foregroundHeight =
+                        (Number(scene.foregroundHeight) || 30)
+                        * gridSize;
+
+                    if (scene.foregroundFit === true) {
+
+                        /*
+                         * 等比例縮放 + 中央裁切
+                         */
+
+                        const scale =
+                            Math.max(
+                                foregroundWidth / img.width,
+                                foregroundHeight / img.height
+                            );
+
+                        const drawWidth =
+                            img.width * scale;
+
+                        const drawHeight =
+                            img.height * scale;
+
+                        const offsetX =
+                            (foregroundWidth - drawWidth) / 2;
+
+                        const offsetY =
+                            (foregroundHeight - drawHeight) / 2;
+
+                        const foregroundX =
+                            (sceneWidth - foregroundWidth) / 2;
+
+                        const foregroundY =
+                            (sceneHeight - foregroundHeight) / 2;
+
+                        ctx.drawImage(
+                            img,
+                            foregroundX,
+                            foregroundY,
+                            foregroundWidth,
+                            foregroundHeight
+                        );
+
+                    } else {
+
+                        /*
+                         * 不勾選：
+                         * 直接拉伸到指定前景尺寸
+                         */
+
+                        ctx.drawImage(
+                            img,
+                            0,
+                            0,
+                            foregroundWidth,
+                            foregroundHeight
+                        );
+
+                    }
+
+                }
+
+                canvas.toBlob(function (blob) {
+
+                    const url =
+                        URL.createObjectURL(blob);
+
+                    const a =
+                        document.createElement("a");
+
+                    a.href = url;
+
+                    a.download =
+                        "cocofolia_scene.png";
+
+                    a.click();
+
+                    URL.revokeObjectURL(url);
+
+                });
+
+            });
+
+
+        function loadImage(src) {
+
+            return new Promise((resolve, reject) => {
+
+                const img =
+                    new Image();
+
+                img.onload = () =>
+                    resolve(img);
+
+                img.onerror = reject;
+
+                img.src = src;
+
+            });
+
+        }
+
+
+        /* ==========================================
+           初始化
+        ========================================== */
+
+        if (scenes.length === 0) {
+
+            const firstScene =
+                createScene("場景 1");
+
+            scenes.push(firstScene);
+
+            currentSceneId =
+                firstScene.id;
+
+        }
+
+        renderSceneList();
+
+        loadCurrentScene();
+
+        render();
+
+        /* =========================================================
+           VIEWPORT
+           只控制「觀看方式」
+           不會修改物件座標
+        ========================================================= */
+
+        let viewScale = 1;
+        let viewX = 0;
+        let viewY = 0;
+
+        let viewDragging = false;
+
+        let viewDragStartX = 0;
+        let viewDragStartY = 0;
+
+        let viewStartX = 0;
+        let viewStartY = 0;
+
+        const MIN_VIEW_SCALE = 0.1;
+        const MAX_VIEW_SCALE = 2;
+
+
+        /* ---------------------------------------------------------
+           更新畫布顯示
+        --------------------------------------------------------- */
+
+        function updateViewport() {
+
+            const scene =
+                document.getElementById("scene");
+
+            const zoomValue =
+                document.getElementById("zoomValue");
+
+            if (!scene) return;
+
+            scene.style.transform =
+                `translate(${viewX}px, ${viewY}px) scale(${viewScale})`;
+
+            if (zoomValue) {
+
+                zoomValue.textContent =
+                    Math.round(viewScale * 100) + "%";
+
+            }
+
+        }
+
+
+        /* ---------------------------------------------------------
+           限制畫布不要完全跑出工作區
+        --------------------------------------------------------- */
+
+        function clampViewport() {
+
+            const workspace =
+                document.getElementById("workspace");
+
+            if (!workspace) return;
+
+            const vw =
+                workspace.clientWidth;
+
+            const vh =
+                workspace.clientHeight;
+
+            const canvasWidth =
+                1920 * viewScale;
+
+            const canvasHeight =
+                1080 * viewScale;
+
+            /*
+             * 至少保留一部分畫布在畫面內
+             */
+            const minVisible = 120;
+
+            const maxX =
+                Math.max(
+                    0,
+                    (canvasWidth + vw) / 2 - minVisible
+                );
+
+            const maxY =
+                Math.max(
+                    0,
+                    (canvasHeight + vh) / 2 - minVisible
+                );
+
+            viewX =
+                Math.max(
+                    -maxX,
+                    Math.min(maxX, viewX)
+                );
+
+            viewY =
+                Math.max(
+                    -maxY,
+                    Math.min(maxY, viewY)
+                );
+
+        }
+
+
+        /* ---------------------------------------------------------
+           設定縮放
+        --------------------------------------------------------- */
+
+        function setViewport(scale, x = viewX, y = viewY) {
+
+            viewScale =
+                Math.max(
+                    MIN_VIEW_SCALE,
+                    Math.min(MAX_VIEW_SCALE, scale)
+                );
+
+            viewX = x;
+            viewY = y;
+
+            clampViewport();
+
+            updateViewport();
+
+        }
+
+
+        /* ---------------------------------------------------------
+           Fit：整張 1920 × 1080 顯示在工作區
+        --------------------------------------------------------- */
+
+        function fitCanvas() {
+
+            const workspace =
+                document.getElementById("workspace");
+
+            if (!workspace) return;
+
+            const vw =
+                workspace.clientWidth;
+
+            const vh =
+                workspace.clientHeight;
+
+            const padding = 40;
+
+            const scaleX =
+                (vw - padding) / 1920;
+
+            const scaleY =
+                (vh - padding) / 1080;
+
+            viewScale =
+                Math.min(scaleX, scaleY);
+
+            viewScale =
+                Math.max(
+                    MIN_VIEW_SCALE,
+                    Math.min(MAX_VIEW_SCALE, viewScale)
+                );
+
+            viewX = 0;
+            viewY = 0;
+
+            updateViewport();
+
+        }
+
+
+        /* ---------------------------------------------------------
+           滾輪縮放
+        --------------------------------------------------------- */
+
+        document
+            .getElementById("workspace")
+            .addEventListener(
+                "wheel",
+                function (e) {
+
+                    e.preventDefault();
+
+                    const rect =
+                        this.getBoundingClientRect();
+
+                    /*
+                     * 滑鼠相對於工作區中心
+                     */
+                    const mouseX =
+                        e.clientX -
+                        rect.left -
+                        rect.width / 2;
+
+                    const mouseY =
+                        e.clientY -
+                        rect.top -
+                        rect.height / 2;
+
+                    /*
+                     * 找到滑鼠目前對應到 Scene 的哪個位置
+                     */
+                    const canvasX =
+                        (mouseX - viewX) /
+                        viewScale;
+
+                    const canvasY =
+                        (mouseY - viewY) /
+                        viewScale;
+
+                    const factor =
+                        e.deltaY < 0
+                            ? 1.1
+                            : 0.9;
+
+                    const newScale =
+                        Math.max(
+                            MIN_VIEW_SCALE,
+                            Math.min(
+                                MAX_VIEW_SCALE,
+                                viewScale * factor
+                            )
+                        );
+
+                    /*
+                     * 保持滑鼠指向的位置不動
+                     */
+                    viewScale = newScale;
+
+                    viewX =
+                        mouseX -
+                        canvasX * newScale;
+
+                    viewY =
+                        mouseY -
+                        canvasY * newScale;
+
+                    clampViewport();
+
+                    updateViewport();
+
+                },
+                { passive: false }
+            );
+
+
+        /* ---------------------------------------------------------
+           放大
+        --------------------------------------------------------- */
+
+        document
+            .getElementById("zoomIn")
+            .addEventListener("click", function () {
+
+                setViewport(
+                    viewScale * 1.1
+                );
+
+            });
+
+
+        /* ---------------------------------------------------------
+           縮小
+        --------------------------------------------------------- */
+
+        document
+            .getElementById("zoomOut")
+            .addEventListener("click", function () {
+
+                setViewport(
+                    viewScale * 0.9
+                );
+
+            });
+
+
+        /* ---------------------------------------------------------
+           Fit
+        --------------------------------------------------------- */
+
+        document
+            .getElementById("fitCanvas")
+            .addEventListener("click", function () {
+
+                fitCanvas();
+
+            });
+
+
+        /* ---------------------------------------------------------
+           100%
+        --------------------------------------------------------- */
+
+        document
+            .getElementById("resetView")
+            .addEventListener("click", function () {
+
+                setViewport(
+                    1,
+                    0,
+                    0
+                );
+
+            });
+
+
+        /* ---------------------------------------------------------
+           空白區域拖曳
+        --------------------------------------------------------- */
+
+        sceneCanvas.addEventListener(
+            "mousedown",
+            function (e) {
+
+                /*
+                 * 只有點到 Scene 空白處
+                 */
+                if (e.target !== sceneCanvas) return;
+
+                if (e.button !== 0) return;
+
+                viewDragging = true;
+
+                viewDragStartX = e.clientX;
+                viewDragStartY = e.clientY;
+
+                viewStartX = viewX;
+                viewStartY = viewY;
+
+                sceneCanvas.style.cursor =
+                    "grabbing";
+
+                e.preventDefault();
+
+            }
+        );
+
+
+        /* ---------------------------------------------------------
+           平移
+        --------------------------------------------------------- */
+
+        document.addEventListener(
+            "mousemove",
+            function (e) {
+
+                if (!viewDragging) return;
+
+                viewX =
+                    viewStartX +
+                    (e.clientX - viewDragStartX);
+
+                viewY =
+                    viewStartY +
+                    (e.clientY - viewDragStartY);
+
+                clampViewport();
+
+                updateViewport();
+
+            }
+        );
+
+
+        /* ---------------------------------------------------------
+           結束平移
+        --------------------------------------------------------- */
+
+        document.addEventListener(
+            "mouseup",
+            function () {
+
+                if (!viewDragging) return;
+
+                viewDragging = false;
+
+                sceneCanvas.style.cursor = "";
+
+            }
+        );
+
+
+        /* ---------------------------------------------------------
+           視窗大小改變
+        --------------------------------------------------------- */
+
+        window.addEventListener(
+            "resize",
+            function () {
+
+                clampViewport();
+
+                updateViewport();
+
+            }
+        );
+
+
+        /* ---------------------------------------------------------
+           初始 Fit
+        --------------------------------------------------------- */
+
+        requestAnimationFrame(
+            function () {
+
+                fitCanvas();
+
+            }
+        );
+
+    </script>
 
 </body>
+
 </html>
