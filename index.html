@@ -651,14 +651,23 @@ button:active {
         </div>
 
         <div class="control">
-            <label>Y</label>
-            <input id="yInput" type="number">
-        </div>
+    <label>Y</label>
+    <input id="yInput" type="number">
+</div>
 
-        <div class="control">
-            <label>寬度</label>
-            <input id="widthInput" type="number">
-        </div>
+<div class="control">
+    <label>圖層</label>
+    <input
+        id="zInput"
+        type="number"
+        step="1"
+    >
+</div>
+
+<div class="control">
+    <label>寬度</label>
+    <input id="widthInput" type="number">
+</div>
 
         <div class="control">
             <label>高度</label>
@@ -964,8 +973,6 @@ const scenes = [];
  */
 const sharedObjects = [];
 
-let sharedZCounter = 1;
-
 let currentSceneId = null;
 
 let selectedId = null;
@@ -1062,9 +1069,9 @@ function createScene(name = "新場景") {
  */
 alignWithGrid: true,
 
-objects: [],
+objects: []
 
-        zCounter: 1
+        
 
     };
 
@@ -2099,7 +2106,7 @@ objectImageInput.addEventListener("change", async function(e) {
                 100,
 
             z:
-    sharedZCounter++,
+    1,
 
             angle:
                 0,
@@ -2206,7 +2213,7 @@ markerImageInput.addEventListener("change", async function(e) {
                 100,
 
             z:
-    sharedZCounter++,
+                1,
 
             angle:
                 0,
@@ -3069,62 +3076,40 @@ if (action === "moveBottom") {
 
 function moveSelectedObjectLayer(direction) {
 
-    const objects =
-        getObjects();
-
     const object =
         getSelectedObject();
 
     if (!object) return;
 
-
-    const sorted =
-        [...objects]
-            .sort(
-                (a, b) =>
-                    a.z - b.z
-            );
-
-
-    const index =
-        sorted.findIndex(
-            o =>
-                o.id === object.id
-        );
-
-
-    if (index === -1) return;
-
-
-    const targetIndex =
-        index + direction;
-
-
-    if (
-        targetIndex < 0 ||
-        targetIndex >= sorted.length
-    ) {
-
-        return;
-
-    }
-
-
-    const other =
-        sorted[targetIndex];
-
-
-    const temp =
-        object.z;
+    /*
+     * 上移一層：
+     * Z + 1
+     *
+     * 下移一層：
+     * Z - 1
+     *
+     * 不限制最低值。
+     * 所以可以：
+     * 1 → 0 → -1 → -2 → -3 ...
+     */
 
     object.z =
-        other.z;
-
-    other.z =
-        temp;
-
+        Number(object.z || 0) +
+        direction;
 
     render();
+
+    /*
+     * 如果目前有選取物件，
+     * 同步更新左側 Z 輸入框。
+     */
+    const zInput =
+        document.getElementById("zInput");
+
+    if (zInput) {
+        zInput.value =
+            object.z;
+    }
 
 }
 
@@ -3243,6 +3228,14 @@ function moveSelectedObjectToBottom() {
 
     render();
 
+const zInput =
+    document.getElementById("zInput");
+
+if (zInput) {
+    zInput.value =
+        object.z;
+}
+
 }
 
 /* =========================================================
@@ -3278,9 +3271,7 @@ function duplicateSelectedObject() {
             object.y + 20,
 
         z:
-            object.type === "sceneMarker"
-                ? ++scene.zCounter
-                : ++sharedZCounter
+    Number(object.z || 0)
 
     };
 
@@ -3750,6 +3741,9 @@ function selectObject(id) {
 
     document.getElementById("widthInput").value =
         Math.round(object.width);
+        
+    document.getElementById("zInput").value =
+    object.z;
 
     document.getElementById("heightInput").value =
         Math.round(object.height);
@@ -3852,6 +3846,35 @@ if (
 }
 
 render();
+
+});
+
+document.getElementById("zInput")
+.addEventListener("input", function() {
+
+    const object =
+        getSelectedObject();
+
+    if (!object) return;
+
+    /*
+     * Z 軸完全允許負數。
+     */
+    const value =
+        Number(this.value);
+
+    /*
+     * 如果輸入不是有效數字，
+     * 就維持目前 Z。
+     */
+    if (!Number.isFinite(value)) {
+        return;
+    }
+
+    object.z =
+        Math.trunc(value);
+
+    render();
 
 });
 
