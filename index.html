@@ -431,6 +431,9 @@ button:active {
     position: absolute;
     transform-origin: center center;
     user-select: none;
+    -webkit-user-select: none;
+    -webkit-user-drag: none;
+    touch-action: none;
     cursor: move;
 }
 
@@ -2613,7 +2616,7 @@ sharedObjects.forEach(object => {
             ")";
 
         img.addEventListener(
-            "mousedown",
+            "pointerdown",
             startDrag
         );
 
@@ -3978,6 +3981,10 @@ function snapObjectToGrid(object) {
 
 /* ==========================================
    拖曳
+   支援：
+   - 滑鼠
+   - 手指觸控
+   - 手寫筆
 ========================================== */
 
 let dragging = false;
@@ -3993,6 +4000,10 @@ let objectStartX = 0;
 let objectStartY = 0;
 
 
+/* ==========================================
+   開始拖曳
+========================================== */
+
 function startDrag(e) {
 
     /*
@@ -4000,88 +4011,213 @@ function startDrag(e) {
      */
     e.stopPropagation();
 
+    /*
+     * 阻止手機瀏覽器把手指操作
+     * 當成頁面滑動 / 縮放
+     */
+    e.preventDefault();
+
     const id =
         e.currentTarget.dataset.id;
 
     selectObject(id);
 
     const object =
-    getSelectedObject();
+        getSelectedObject();
 
-if (!object) return;
+    if (!object) return;
 
-/* 畫面元件鎖定後不可拖曳 */
-if (
-    object.type !== "sceneMarker" &&
-    object.locked === true
-) {
-    return;
-}
 
-dragging = true;
+    /*
+     * 畫面元件鎖定後不可拖曳
+     *
+     * 地形標誌仍然可以拖曳
+     */
+    if (
+        object.type !== "sceneMarker" &&
+        object.locked === true
+    ) {
+        return;
+    }
+
+
+    dragging = true;
 
     dragObject = object;
 
+
+    /*
+     * Pointer Events 同時支援：
+     *
+     * 滑鼠
+     * 手指
+     * 手寫筆
+     */
     dragStartX = e.clientX;
 
     dragStartY = e.clientY;
+
 
     objectStartX = object.x;
 
     objectStartY = object.y;
 
-    e.preventDefault();
+
+    /*
+     * 讓瀏覽器把後續 pointermove
+     * 都交給目前這張圖片
+     *
+     * 手指拖曳會穩定很多
+     */
+    if (
+        e.currentTarget.setPointerCapture &&
+        e.pointerId !== undefined
+    ) {
+        try {
+            e.currentTarget.setPointerCapture(
+                e.pointerId
+            );
+        } catch (error) {
+            console.warn(
+                "Pointer Capture 啟用失敗：",
+                error
+            );
+        }
+    }
 
 }
 
 
-document.addEventListener("mousemove", function(e) {
+/* ==========================================
+   拖曳中
+========================================== */
 
-    if (!dragging || !dragObject) return;
+document.addEventListener(
+    "pointermove",
+    function(e) {
 
-    const dx =
-    (e.clientX - dragStartX) /
-    viewScale;
-
-const dy =
-    (e.clientY - dragStartY) /
-    viewScale;
-
-dragObject.x =
-    objectStartX + dx;
-
-dragObject.y =
-    objectStartY + dy;
+        if (
+            !dragging ||
+            !dragObject
+        ) {
+            return;
+        }
 
 
-/*
- * 只有勾選「對齊格線」才吸附。
- *
- * 沒勾：
- * 完全自由移動。
- *
- * 有勾：
- * 自動吸附到最近的 24px 格線。
- */
-if (
-    getCurrentScene()?.alignWithGrid === true
-) {
-    snapObjectToGrid(dragObject);
-}
-
-render();
-
-});
+        /*
+         * 防止手機瀏覽器在拖曳時
+         * 同時捲動畫面
+         */
+        e.preventDefault();
 
 
-document.addEventListener("mouseup", function() {
+        /*
+         * 因為 Scene 可能有縮放，
+         * 所以要除以 viewScale。
+         */
+        const dx =
+            (e.clientX - dragStartX) /
+            viewScale;
+
+        const dy =
+            (e.clientY - dragStartY) /
+            viewScale;
+
+
+        dragObject.x =
+            objectStartX + dx;
+
+        dragObject.y =
+            objectStartY + dy;
+
+
+        /*
+         * 只有勾選「對齊格線」
+         * 才自動吸附。
+         */
+        if (
+            getCurrentScene()?.alignWithGrid === true
+        ) {
+
+            snapObjectToGrid(
+                dragObject
+            );
+
+        }
+
+
+        /*
+         * 更新畫面
+         */
+        render();
+
+    },
+    {
+        passive: false
+    }
+);
+
+
+/* ==========================================
+   結束拖曳
+========================================== */
+
+function stopDrag(e) {
+
+    if (!dragging) return;
+
+
+    /*
+     * 如果有 Pointer Capture，
+     * 嘗試解除
+     */
+    if (
+        e &&
+        e.currentTarget &&
+        e.pointerId !== undefined &&
+        e.currentTarget.releasePointerCapture
+    ) {
+
+        try {
+
+            e.currentTarget.releasePointerCapture(
+                e.pointerId
+            );
+
+        } catch (error) {
+
+            /* 不需要中斷拖曳結束流程 */
+
+        }
+
+    }
+
 
     dragging = false;
 
     dragObject = null;
 
-});
+}
 
+
+/*
+ * 手指 / 滑鼠 / 手寫筆
+ * 都會進入這裡
+ */
+document.addEventListener(
+    "pointerup",
+    stopDrag
+);
+
+
+/*
+ * 如果手指拖出瀏覽器畫面，
+ * 也要強制結束拖曳。
+ */
+document.addEventListener(
+    "pointercancel",
+    stopDrag
+);
 
 /* ==========================================
    點空白處取消選取
