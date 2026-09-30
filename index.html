@@ -122,6 +122,55 @@ button:active {
     background: #555;
 }
 
+.object-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+}
+
+.object-item-name {
+    flex: 1;
+    min-width: 0;
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.object-item-actions {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    flex-shrink: 0;
+}
+
+.object-state-button {
+    width: 26px;
+    height: 26px;
+
+    padding: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background: transparent;
+
+    border: 1px solid transparent;
+    border-radius: 4px;
+
+    cursor: pointer;
+
+    font-size: 14px;
+    line-height: 1;
+}
+
+.object-state-button:hover {
+    background: #444;
+    border-color: #666;
+}
+
 #sceneList {
     border: 1px solid #444;
     background: #222;
@@ -806,9 +855,26 @@ button:active {
     🖼
 </button>
 
+<!-- 可視 / 隱藏 -->
+<button
+    type="button"
+    data-quick-action="toggleVisible"
+    title="隱藏元件"
+>
+    👁
+</button>
+
+<!-- 鎖定 / 解鎖 -->
+<button
+    type="button"
+    data-quick-action="toggleLocked"
+    title="解除鎖定"
+>
+    🔒
+</button>
+
 <div class="quick-divider"></div>
 
-    <div class="quick-divider"></div>
 
     <!-- 圖層置頂 -->
 <button
@@ -2048,7 +2114,13 @@ objectImageInput.addEventListener("change", async function(e) {
                 false,
 
             flipY:
-                false
+    false,
+
+visible:
+    true,
+
+locked:
+    false
 
         };
 
@@ -2472,6 +2544,26 @@ document.getElementById("clearForeground")
 function render() {
 
     objectsContainer.innerHTML = "";
+    
+    /* ==========================================
+   舊版畫面元件補上預設狀態
+========================================== */
+
+sharedObjects.forEach(object => {
+
+    if (object.type === "sceneMarker") {
+        return;
+    }
+
+    if (typeof object.visible !== "boolean") {
+        object.visible = true;
+    }
+
+    if (typeof object.locked !== "boolean") {
+        object.locked = true;
+    }
+
+});
 
     getObjects().forEach(object => {
 
@@ -2500,6 +2592,15 @@ function render() {
 
         img.style.opacity =
             object.opacity;
+            
+        img.style.visibility =
+    object.type === "sceneMarker"
+        ? "visible"
+        : (
+            object.visible !== false
+                ? "visible"
+                : "hidden"
+        );
 
         img.style.transform =
             "rotate(" +
@@ -2570,10 +2671,15 @@ function updateObjectQuickToolbar() {
 
     if (!objectQuickToolbar) return;
 
+
     const object =
         getSelectedObject();
 
-    /* 沒有選取物件 → 隱藏 */
+
+    /* ==========================================
+       沒有選取物件
+       → 直接隱藏工具列
+    ========================================== */
 
     if (!object) {
 
@@ -2584,17 +2690,101 @@ function updateObjectQuickToolbar() {
 
     }
 
-    /*
-     * 顯示工具列
-     */
+
+    /* ==========================================
+       找到眼睛 / 鎖頭按鈕
+    ========================================== */
+
+    const visibilityButton =
+        objectQuickToolbar.querySelector(
+            '[data-quick-action="toggleVisible"]'
+        );
+
+    const lockButton =
+        objectQuickToolbar.querySelector(
+            '[data-quick-action="toggleLocked"]'
+        );
+
+
+    /* ==========================================
+       地形標誌
+       → 不顯示眼睛 / 鎖頭
+    ========================================== */
+
+    const isSceneObject =
+        object.type !== "sceneMarker";
+
+
+    if (visibilityButton) {
+
+        visibilityButton.style.display =
+            isSceneObject
+                ? "flex"
+                : "none";
+
+    }
+
+
+    if (lockButton) {
+
+        lockButton.style.display =
+            isSceneObject
+                ? "flex"
+                : "none";
+
+    }
+
+
+    /* ==========================================
+       畫面元件
+       → 更新按鈕狀態
+    ========================================== */
+
+    if (isSceneObject) {
+
+        if (visibilityButton) {
+
+            visibilityButton.textContent =
+                object.visible !== false
+                    ? "👁"
+                    : "🚫";
+
+            visibilityButton.title =
+                object.visible !== false
+                    ? "隱藏元件"
+                    : "顯示元件";
+
+        }
+
+
+        if (lockButton) {
+
+            lockButton.textContent =
+                object.locked === true
+                    ? "🔒"
+                    : "🔓";
+
+            lockButton.title =
+                object.locked === true
+                    ? "解除鎖定"
+                    : "鎖定元件";
+
+        }
+
+    }
+
+
+    /* ==========================================
+       顯示工具列
+    ========================================== */
 
     objectQuickToolbar.style.display =
         "flex";
 
 
-    /*
-     * 預設放在圖片上方中央
-     */
+    /* ==========================================
+       工具列位置
+    ========================================== */
 
     let left =
         object.x +
@@ -2603,11 +2793,6 @@ function updateObjectQuickToolbar() {
     let top =
         object.y - 8;
 
-
-    /*
-     * 如果圖片太靠近 Scene 頂部，
-     * 工具列改放到圖片下面。
-     */
 
     if (top < 50) {
 
@@ -2627,9 +2812,9 @@ function updateObjectQuickToolbar() {
     }
 
 
-    /*
-     * 防止工具列跑出 Scene 左右邊界
-     */
+    /* ==========================================
+       防止工具列超出 Scene 左右
+    ========================================== */
 
     const toolbarWidth =
         objectQuickToolbar.offsetWidth || 220;
@@ -2712,6 +2897,45 @@ function executeQuickAction(action) {
         getSelectedObject();
 
     if (!object) return;
+    
+    /* ==========================================
+   可視 / 隱藏
+========================================== */
+
+if (action === "toggleVisible") {
+
+    /* 地形標記不提供此功能 */
+    if (object.type === "sceneMarker") {
+        return;
+    }
+
+    object.visible =
+        object.visible === false;
+
+    render();
+
+    return;
+}
+
+
+/* ==========================================
+   鎖定 / 解鎖
+========================================== */
+
+if (action === "toggleLocked") {
+
+    /* 地形標記不提供此功能 */
+    if (object.type === "sceneMarker") {
+        return;
+    }
+
+    object.locked =
+        !object.locked;
+
+    render();
+
+    return;
+}
     
     if (action === "replaceImage") {
 
@@ -3223,7 +3447,6 @@ document
 /* ==========================================
    物件列表
 ========================================== */
-
 function updateList() {
 
     const sceneObjectList =
@@ -3235,7 +3458,12 @@ function updateList() {
     sceneObjectList.innerHTML = "";
     markerObjectList.innerHTML = "";
 
-    // 場景元件
+
+    /* ==========================================
+       場景元件
+       → 有 👁 / 🔒
+    ========================================== */
+
     [...sharedObjects]
         .sort((a, b) => b.z - a.z)
         .forEach(object => {
@@ -3243,40 +3471,176 @@ function updateList() {
             const div =
                 document.createElement("div");
 
-            div.className = "object-item";
+            div.className =
+                "object-item";
 
             if (object.id === selectedId) {
                 div.classList.add("selected");
             }
 
-            div.textContent =
+
+            /* 名稱 */
+
+            const nameSpan =
+                document.createElement("span");
+
+            nameSpan.className =
+                "object-item-name";
+
+            nameSpan.textContent =
                 object.name +
                 " [Z:" +
                 object.z +
                 "]";
 
-            div.addEventListener("click", function() {
-                selectObject(object.id);
-            });
+
+            /* 右側按鈕 */
+
+            const actions =
+                document.createElement("div");
+
+            actions.className =
+                "object-item-actions";
+
+
+            /* ==================================
+               👁 可視 / 隱藏
+            ================================== */
+
+            const visibilityButton =
+                document.createElement("button");
+
+            visibilityButton.type =
+                "button";
+
+            visibilityButton.className =
+                "object-state-button";
+
+            visibilityButton.title =
+                object.visible !== false
+                    ? "隱藏元件"
+                    : "顯示元件";
+
+            visibilityButton.textContent =
+                object.visible !== false
+                    ? "👁"
+                    : "🚫";
+
+            visibilityButton.addEventListener(
+                "click",
+                function(e) {
+
+                    e.stopPropagation();
+
+                    object.visible =
+                        object.visible === false;
+
+                    render();
+
+                }
+            );
+
+
+            /* ==================================
+               🔒 鎖定 / 解鎖
+            ================================== */
+
+            const lockButton =
+                document.createElement("button");
+
+            lockButton.type =
+                "button";
+
+            lockButton.className =
+                "object-state-button";
+
+            lockButton.title =
+                object.locked === true
+                    ? "解除鎖定"
+                    : "鎖定元件";
+
+            lockButton.textContent =
+                object.locked === true
+                    ? "🔒"
+                    : "🔓";
+
+            lockButton.addEventListener(
+                "click",
+                function(e) {
+
+                    e.stopPropagation();
+
+                    object.locked =
+                        !object.locked;
+
+                    render();
+
+                }
+            );
+
+
+            /* 組裝 */
+
+            actions.appendChild(
+                visibilityButton
+            );
+
+            actions.appendChild(
+                lockButton
+            );
+
+            div.appendChild(
+                nameSpan
+            );
+
+            div.appendChild(
+                actions
+            );
+
+
+            /* 點名稱 / 空白區選取 */
+
+            div.addEventListener(
+                "click",
+                function() {
+
+                    selectObject(object.id);
+
+                }
+            );
+
 
             sceneObjectList.appendChild(div);
+
         });
 
 
-    // 地形標誌元件
-    const scene = getCurrentScene();
+    /* ==========================================
+       地形標誌元件
+       → 不放 👁 / 🔒
+    ========================================== */
+
+    const scene =
+        getCurrentScene();
 
     if (!scene) return;
 
+
     [...scene.objects]
-        .filter(object => object.type === "sceneMarker")
-        .sort((a, b) => b.z - a.z)
+        .filter(
+            object =>
+                object.type === "sceneMarker"
+        )
+        .sort(
+            (a, b) => b.z - a.z
+        )
         .forEach(object => {
 
             const div =
                 document.createElement("div");
 
-            div.className = "object-item";
+            div.className =
+                "object-item";
 
             if (object.id === selectedId) {
                 div.classList.add("selected");
@@ -3288,14 +3652,24 @@ function updateList() {
                 object.z +
                 "]";
 
-            div.addEventListener("click", function() {
-                selectObject(object.id);
-            });
+            div.addEventListener(
+                "click",
+                function() {
+
+                    selectObject(object.id);
+
+                }
+            );
 
             markerObjectList.appendChild(div);
+
         });
+
 }
 
+/* ==========================================
+   updateSelectionVisual
+========================================== */
 
 function updateSelectionVisual() {
 
@@ -3310,7 +3684,6 @@ function updateSelectionVisual() {
         });
 
 }
-
 
 /* ==========================================
    選取
@@ -3633,11 +4006,19 @@ function startDrag(e) {
     selectObject(id);
 
     const object =
-        getSelectedObject();
+    getSelectedObject();
 
-    if (!object) return;
+if (!object) return;
 
-    dragging = true;
+/* 畫面元件鎖定後不可拖曳 */
+if (
+    object.type !== "sceneMarker" &&
+    object.locked === true
+) {
+    return;
+}
+
+dragging = true;
 
     dragObject = object;
 
@@ -4357,10 +4738,10 @@ const y =
             null,
 
         locked:
-            true,
+    object.locked === true,
 
-        visible:
-            true,
+visible:
+    object.visible !== false,
 
         closed:
             false,
@@ -4375,7 +4756,7 @@ const y =
             "object",
 
         active:
-            true,
+    object.visible !== false,
 
         memo:
             "",
