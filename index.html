@@ -2400,8 +2400,7 @@ document.getElementById("xInput")
 
 object.x =
     SCENE_ORIGIN_X +
-    logicalX * SCENE_GRID_SIZE -
-    object.width / 2;
+    logicalX * SCENE_GRID_SIZE;
 
 if (
     getCurrentScene()?.alignWithGrid === true
@@ -2426,8 +2425,7 @@ document.getElementById("yInput")
 
 object.y =
     SCENE_ORIGIN_Y +
-    logicalY * SCENE_GRID_SIZE -
-    object.height / 2;
+    logicalY * SCENE_GRID_SIZE;
 
 if (
     getCurrentScene()?.alignWithGrid === true
@@ -2827,20 +2825,16 @@ function snapObjectToGrid(object) {
 
     if (!object) return;
 
-
     object.x =
-        snapCoordinateToGrid(
-            object.x,
-            SCENE_ORIGIN_X
-        );
-
+        Math.round(object.x / SCENE_GRID_SIZE) *
+        SCENE_GRID_SIZE;
 
     object.y =
-        snapCoordinateToGrid(
-            object.y,
-            SCENE_ORIGIN_Y
-        );
-
+    Math.round(
+        (object.y - 12) / SCENE_GRID_SIZE
+    ) *
+    SCENE_GRID_SIZE +
+    12;
 }
 
 
@@ -3563,18 +3557,10 @@ for (const object of sharedObjects) {
         );
 
     const x =
-        (
-            object.x +
-            object.width / 2 -
-            960
-        ) / 24;
+    (object.x - 960)/24;
 
-    const y =
-        (
-            object.y +
-            object.height / 2 -
-            540
-        ) / 24;
+const y =
+    (object.y - 540)/24;
 
     const width =
         object.width / 24;
@@ -3744,20 +3730,11 @@ for (
 
 
     const x =
-        (
-            object.x +
-            object.width / 2 -
-            960
-        ) / 24;
+    (object.x - 960)/24;
 
-
-    const y =
-        (
-            object.y +
-            object.height / 2 -
-            540
-        ) / 24;
-
+const y =
+    (object.y - 540)/24;
+    
 
     const width =
         object.width / 24;
