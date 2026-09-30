@@ -389,6 +389,120 @@ button:active {
     outline: 2px solid #4da6ff;
 }
 
+/* =========================================================
+   選取物件浮動快捷工具列
+========================================================= */
+
+#objectQuickToolbar {
+    position: absolute;
+
+    display: flex;
+    align-items: center;
+    gap: 4px;
+
+    padding: 5px;
+
+    background: rgba(30, 30, 30, 0.96);
+
+    border: 1px solid #666;
+    border-radius: 7px;
+
+    box-shadow:
+        0 4px 14px rgba(0, 0, 0, 0.45);
+
+    z-index: 1000;
+
+    pointer-events: auto;
+
+    white-space: nowrap;
+}
+
+/* 工具列小按鈕 */
+
+#objectQuickToolbar button {
+    width: 30px;
+    height: 30px;
+
+    padding: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background: #3a3a3a;
+    color: #eee;
+
+    border: 1px solid #666;
+    border-radius: 5px;
+
+    cursor: pointer;
+
+    font-size: 14px;
+    line-height: 1;
+}
+
+#objectQuickToolbar button:hover {
+    background: #555;
+}
+
+#objectQuickToolbar button:active {
+    background: #666;
+}
+
+/* 危險操作：刪除 */
+
+#objectQuickToolbar button.quick-delete {
+    color: #ff7777;
+}
+
+#objectQuickToolbar button.quick-delete:hover {
+    background: #6b3030;
+    color: white;
+}
+
+/* 分隔線 */
+
+.quick-divider {
+    width: 1px;
+    height: 22px;
+
+    background: #666;
+
+    margin: 0 2px;
+}
+
+/* 工具提示 */
+
+#objectQuickToolbar button {
+    position: relative;
+}
+
+#objectQuickToolbar button:hover::after {
+    content: attr(title);
+
+    position: absolute;
+
+    left: 50%;
+    bottom: calc(100% + 7px);
+
+    transform: translateX(-50%);
+
+    padding: 4px 7px;
+
+    background: #111;
+    color: #fff;
+
+    border: 1px solid #555;
+    border-radius: 4px;
+
+    font-size: 11px;
+    white-space: nowrap;
+
+    pointer-events: none;
+
+    z-index: 2000;
+}
+
 #dropHint {
     position: absolute;
     left: 50%;
@@ -512,20 +626,7 @@ button:active {
             >
         </div>
 
-        <div class="row">
-            <button id="flipX">水平鏡像</button>
-            <button id="flipY">垂直鏡像</button>
-        </div>
 
-        <div class="row">
-            <button id="moveUp">圖層 ↑</button>
-            <button id="moveDown">圖層 ↓</button>
-        </div>
-
-        <div class="row">
-            <button id="duplicate">複製物件</button>
-            <button id="delete">刪除物件</button>
-        </div>
 
     </div>
 
@@ -663,6 +764,74 @@ button:active {
 
     <!-- 24 × 24 px 格線 -->
     <div id="sceneGrid"></div>
+    
+    <!-- =====================================================
+     選取物件浮動快捷工具列
+     JavaScript 會在選取圖片後自動定位
+===================================================== -->
+
+<div id="objectQuickToolbar" style="display:none;">
+
+    <!-- 水平鏡像 -->
+    <button
+        type="button"
+        data-quick-action="flipX"
+        title="水平鏡像"
+    >
+        ↔
+    </button>
+
+    <!-- 垂直鏡像 -->
+    <button
+        type="button"
+        data-quick-action="flipY"
+        title="垂直鏡像"
+    >
+        ↕
+    </button>
+
+    <div class="quick-divider"></div>
+
+    <!-- 圖層上移 -->
+    <button
+        type="button"
+        data-quick-action="moveUp"
+        title="圖層上移"
+    >
+        ↑
+    </button>
+
+    <!-- 圖層下移 -->
+    <button
+        type="button"
+        data-quick-action="moveDown"
+        title="圖層下移"
+    >
+        ↓
+    </button>
+
+    <div class="quick-divider"></div>
+
+    <!-- 複製 -->
+    <button
+        type="button"
+        data-quick-action="duplicate"
+        title="複製物件"
+    >
+        ⧉
+    </button>
+
+    <!-- 刪除 -->
+    <button
+        type="button"
+        data-quick-action="delete"
+        class="quick-delete"
+        title="刪除物件"
+    >
+        ×
+    </button>
+
+</div>
 
 </div>
 
@@ -2202,35 +2371,49 @@ function render() {
 
         img.dataset.id = object.id;
 
-        img.style.left = object.x + "px";
+        img.style.left =
+            object.x + "px";
 
-        img.style.top = object.y + "px";
+        img.style.top =
+            object.y + "px";
 
-        img.style.width = object.width + "px";
+        img.style.width =
+            object.width + "px";
 
-        img.style.height = object.height + "px";
+        img.style.height =
+            object.height + "px";
 
-        img.style.zIndex = object.z;
+        img.style.zIndex =
+            object.z;
 
-        img.style.opacity = object.opacity;
+        img.style.opacity =
+            object.opacity;
 
         img.style.transform =
-            "rotate(" + object.angle + "deg) " +
+            "rotate(" +
+            object.angle +
+            "deg) " +
             "scale(" +
             (object.flipX ? -1 : 1) +
             "," +
             (object.flipY ? -1 : 1) +
             ")";
 
-        img.addEventListener("mousedown", startDrag);
+        img.addEventListener(
+            "mousedown",
+            startDrag
+        );
 
-        img.addEventListener("click", function(e) {
+        img.addEventListener(
+            "click",
+            function(e) {
 
-            e.stopPropagation();
+                e.stopPropagation();
 
-            selectObject(object.id);
+                selectObject(object.id);
 
-        });
+            }
+        );
 
         objectsContainer.appendChild(img);
 
@@ -2242,7 +2425,535 @@ function render() {
 
     updateDropHint();
 
+    /* 更新圖片上方的快捷工具列 */
+    updateObjectQuickToolbar();
+
 }
+
+/* =========================================================
+   選取物件浮動快捷工具列
+========================================================= */
+
+const objectQuickToolbar =
+    document.getElementById(
+        "objectQuickToolbar"
+    );
+
+
+/*
+ * 更新快捷工具列位置
+ *
+ * 工具列會出現在：
+ *
+ *        [快捷工具列]
+ *              ↓
+ *        ┌──────────┐
+ *        │   圖片   │
+ *        │          │
+ *        └──────────┘
+ *
+ */
+
+function updateObjectQuickToolbar() {
+
+    if (!objectQuickToolbar) return;
+
+    const object =
+        getSelectedObject();
+
+    /* 沒有選取物件 → 隱藏 */
+
+    if (!object) {
+
+        objectQuickToolbar.style.display =
+            "none";
+
+        return;
+
+    }
+
+    /*
+     * 顯示工具列
+     */
+
+    objectQuickToolbar.style.display =
+        "flex";
+
+
+    /*
+     * 預設放在圖片上方中央
+     */
+
+    let left =
+        object.x +
+        object.width / 2;
+
+    let top =
+        object.y - 8;
+
+
+    /*
+     * 如果圖片太靠近 Scene 頂部，
+     * 工具列改放到圖片下面。
+     */
+
+    if (top < 50) {
+
+        top =
+            object.y +
+            object.height +
+            8;
+
+        objectQuickToolbar.style.transform =
+            "translateX(-50%)";
+
+    } else {
+
+        objectQuickToolbar.style.transform =
+            "translate(-50%, -100%)";
+
+    }
+
+
+    /*
+     * 防止工具列跑出 Scene 左右邊界
+     */
+
+    const toolbarWidth =
+        objectQuickToolbar.offsetWidth || 220;
+
+    const halfWidth =
+        toolbarWidth / 2;
+
+    left =
+        Math.max(
+            halfWidth + 6,
+            Math.min(
+                1920 - halfWidth - 6,
+                left
+            )
+        );
+
+
+    objectQuickToolbar.style.left =
+        left + "px";
+
+    objectQuickToolbar.style.top =
+        top + "px";
+
+}
+
+
+/* =========================================================
+   快捷工具列按鈕
+========================================================= */
+
+objectQuickToolbar
+    .querySelectorAll(
+        "[data-quick-action]"
+    )
+    .forEach(button => {
+
+        button.addEventListener(
+            "mousedown",
+            function(e) {
+
+                /*
+                 * 非常重要：
+                 * 點快捷按鈕時不要開始拖曳圖片。
+                 */
+
+                e.preventDefault();
+
+                e.stopPropagation();
+
+            }
+        );
+
+
+        button.addEventListener(
+            "click",
+            function(e) {
+
+                e.preventDefault();
+
+                e.stopPropagation();
+
+                const action =
+                    this.dataset.quickAction;
+
+                executeQuickAction(action);
+
+            }
+        );
+
+    });
+
+
+/* =========================================================
+   執行快捷操作
+========================================================= */
+
+function executeQuickAction(action) {
+
+    const object =
+        getSelectedObject();
+
+    if (!object) return;
+
+
+    /*
+     * 水平鏡像
+     */
+
+    if (action === "flipX") {
+
+        object.flipX =
+            !object.flipX;
+
+        render();
+
+        return;
+
+    }
+
+
+    /*
+     * 垂直鏡像
+     */
+
+    if (action === "flipY") {
+
+        object.flipY =
+            !object.flipY;
+
+        render();
+
+        return;
+
+    }
+
+
+    /*
+     * 圖層上移
+     */
+
+    if (action === "moveUp") {
+
+        moveSelectedObjectLayer(1);
+
+        return;
+
+    }
+
+
+    /*
+     * 圖層下移
+     */
+
+    if (action === "moveDown") {
+
+        moveSelectedObjectLayer(-1);
+
+        return;
+
+    }
+
+
+    /*
+     * 複製
+     */
+
+    if (action === "duplicate") {
+
+        duplicateSelectedObject();
+
+        return;
+
+    }
+
+
+    /*
+     * 刪除
+     */
+
+    if (action === "delete") {
+
+        deleteSelectedObject();
+
+        return;
+
+    }
+
+}
+
+
+/* =========================================================
+   圖層移動
+========================================================= */
+
+function moveSelectedObjectLayer(direction) {
+
+    const objects =
+        getObjects();
+
+    const object =
+        getSelectedObject();
+
+    if (!object) return;
+
+
+    const sorted =
+        [...objects]
+            .sort(
+                (a, b) =>
+                    a.z - b.z
+            );
+
+
+    const index =
+        sorted.findIndex(
+            o =>
+                o.id === object.id
+        );
+
+
+    if (index === -1) return;
+
+
+    const targetIndex =
+        index + direction;
+
+
+    if (
+        targetIndex < 0 ||
+        targetIndex >= sorted.length
+    ) {
+
+        return;
+
+    }
+
+
+    const other =
+        sorted[targetIndex];
+
+
+    const temp =
+        object.z;
+
+    object.z =
+        other.z;
+
+    other.z =
+        temp;
+
+
+    render();
+
+}
+
+
+/* =========================================================
+   複製目前物件
+========================================================= */
+
+function duplicateSelectedObject() {
+
+    const object =
+        getSelectedObject();
+
+    const scene =
+        getCurrentScene();
+
+    if (!object || !scene) return;
+
+
+    const copy = {
+
+        ...object,
+
+        id:
+            createId(),
+
+        name:
+            object.name +
+            " 副本",
+
+        x:
+            object.x + 20,
+
+        y:
+            object.y + 20,
+
+        z:
+            object.type === "sceneMarker"
+                ? ++scene.zCounter
+                : ++sharedZCounter
+
+    };
+
+
+    /*
+     * 場景標誌
+     * → 只存在目前 Scene
+     */
+
+    if (
+        object.type ===
+        "sceneMarker"
+    ) {
+
+        scene.objects.push(copy);
+
+    }
+
+    /*
+     * 一般場景元件
+     * → 全場景共用
+     */
+
+    else {
+
+        sharedObjects.push(copy);
+
+    }
+
+
+    /*
+     * 複製後立即選取新的物件
+     */
+
+    selectedId =
+        copy.id;
+
+    render();
+
+    selectObject(copy.id);
+
+}
+
+
+/* =========================================================
+   刪除目前物件
+========================================================= */
+
+function deleteSelectedObject() {
+
+    if (!selectedId) return;
+
+
+    const scene =
+        getCurrentScene();
+
+    let objects = null;
+
+
+    if (scene) {
+
+        /*
+         * 場景標誌
+         */
+
+        if (
+            scene.objects.some(
+                o =>
+                    o.id === selectedId
+            )
+        ) {
+
+            objects =
+                scene.objects;
+
+        }
+
+        /*
+         * 一般場景元件
+         */
+
+        else {
+
+            objects =
+                sharedObjects;
+
+        }
+
+    }
+
+
+    if (objects) {
+
+        const index =
+            objects.findIndex(
+                o =>
+                    o.id === selectedId
+            );
+
+
+        if (index !== -1) {
+
+            objects.splice(
+                index,
+                1
+            );
+
+        }
+
+    }
+
+
+    selectedId =
+        null;
+
+
+    editor.style.display =
+        "none";
+
+    noSelection.style.display =
+        "block";
+
+
+    render();
+
+}
+
+
+/* =========================================================
+   點擊 Scene 空白處時，
+   同時關閉快捷工具列
+========================================================= */
+
+document
+    .getElementById("scene")
+    .addEventListener(
+        "click",
+        function(e) {
+
+            if (
+                e.target === this ||
+                e.target === background ||
+                e.target === foreground
+            ) {
+
+                selectedId =
+                    null;
+
+                editor.style.display =
+                    "none";
+
+                noSelection.style.display =
+                    "block";
+
+                updateSelectionVisual();
+
+                updateObjectQuickToolbar();
+
+                updateList();
+
+            }
+
+        }
+    );
 
 
 /* ==========================================
@@ -2388,7 +3099,9 @@ function selectObject(id) {
 
     updateSelectionVisual();
 
-    updateList();
+updateList();
+
+updateObjectQuickToolbar();
 
 }
 
@@ -2550,256 +3263,6 @@ document.getElementById("opacityInput")
     render();
 
 });
-
-
-/* ==========================================
-   鏡像
-========================================== */
-
-document.getElementById("flipX")
-.addEventListener("click", function() {
-
-    const object = getSelectedObject();
-
-    if (!object) return;
-
-    object.flipX = !object.flipX;
-
-    render();
-
-});
-
-
-document.getElementById("flipY")
-.addEventListener("click", function() {
-
-    const object = getSelectedObject();
-
-    if (!object) return;
-
-    object.flipY = !object.flipY;
-
-    render();
-
-});
-
-
-/* ==========================================
-   圖層
-========================================== */
-
-document.getElementById("moveUp")
-.addEventListener("click", function() {
-
-    const objects = getObjects();
-    const object = getSelectedObject();
-
-    if (!object) return;
-
-    const sorted =
-        [...objects].sort((a, b) => a.z - b.z);
-
-    const index =
-        sorted.findIndex(
-            o => o.id === object.id
-        );
-
-    if (index === -1) return;
-
-    if (index < sorted.length - 1) {
-
-        const other =
-            sorted[index + 1];
-
-        const temp =
-            object.z;
-
-        object.z =
-            other.z;
-
-        other.z =
-            temp;
-
-    }
-
-    render();
-
-});
-
-
-document.getElementById("moveDown")
-.addEventListener("click", function() {
-
-    const objects = getObjects();
-    const object = getSelectedObject();
-
-    if (!object) return;
-
-    const sorted =
-        [...objects].sort((a, b) => a.z - b.z);
-
-    const index =
-        sorted.findIndex(
-            o => o.id === object.id
-        );
-
-    if (index === -1) return;
-
-    if (index > 0) {
-
-        const other =
-            sorted[index - 1];
-
-        const temp =
-            object.z;
-
-        object.z =
-            other.z;
-
-        other.z =
-            temp;
-
-    }
-
-    render();
-
-});
-
-
-/* ==========================================
-   複製
-========================================== */
-
-document.getElementById("duplicate")
-.addEventListener("click", function() {
-
-    const object = getSelectedObject();
-
-    const scene = getCurrentScene();
-
-    if (!object || !scene) return;
-
-    const copy = {
-
-    ...object,
-
-    id:
-        createId(),
-
-    name:
-        object.name + " 副本",
-
-    x:
-        object.x + 20,
-
-    y:
-        object.y + 20,
-
-    z:
-        object.type === "sceneMarker"
-            ? ++scene.zCounter
-            : ++sharedZCounter
-
-};
-
-
-/*
- * 場景標誌 → 留在目前 Scene
- *
- * 一般畫面元件 → 全場景共用
- */
-if (object.type === "sceneMarker") {
-
-    scene.objects.push(copy);
-
-} else {
-
-    sharedObjects.push(copy);
-
-}
-
-
-render();
-
-selectObject(copy.id);
-
-    render();
-
-    selectObject(copy.id);
-
-});
-
-
-/* ==========================================
-   刪除
-========================================== */
-
-document.getElementById("delete")
-.addEventListener("click", function() {
-
-    if (!selectedId) return;
-
-    const scene =
-    getCurrentScene();
-
-let objects;
-
-if (scene) {
-
-    /*
-     * 場景標誌 → 從目前 Scene 刪除
-     */
-    if (
-        scene.objects.some(
-            o => o.id === selectedId
-        )
-    ) {
-
-        objects =
-            scene.objects;
-
-    }
-
-    /*
-     * 一般畫面元件
-     * → 從全場景共用物件刪除
-     */
-    else {
-
-        objects =
-            sharedObjects;
-
-    }
-
-}
-
-
-if (objects) {
-
-    const index =
-        objects.findIndex(
-            o => o.id === selectedId
-        );
-
-    if (index !== -1) {
-
-        objects.splice(index, 1);
-
-    }
-
-}
-
-    selectedId = null;
-
-    editor.style.display = "none";
-
-    noSelection.style.display = "block";
-
-    render();
-
-});
-
-
 
 
 
