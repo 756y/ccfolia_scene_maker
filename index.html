@@ -100,12 +100,71 @@ button:active {
     padding: 0;
 }
 
-#objectList {
+#sceneObjectList,
+#markerObjectList,
+#sceneList {
     border: 1px solid #444;
     background: #222;
     max-height: 180px;
     overflow-y: auto;
+    margin-bottom: 8px;
 }
+
+/* ==========================================
+   左側可折疊區塊
+========================================== */
+
+.sidebar-section {
+    margin-bottom: 8px;
+}
+
+.sidebar-section-header {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    padding: 8px 10px;
+
+    background: #3a3a3a;
+    color: #eee;
+
+    border: 1px solid #555;
+    border-radius: 5px;
+
+    font-size: 14px;
+    font-weight: bold;
+
+    cursor: pointer;
+}
+
+.sidebar-section-header:hover {
+    background: #484848;
+}
+
+.sidebar-section-content {
+    margin-top: 5px;
+}
+
+.section-arrow {
+    font-size: 11px;
+    transition: transform 0.15s ease;
+}
+
+/* 收起狀態 */
+.sidebar-section.collapsed
+.sidebar-section-content {
+    display: none;
+}
+
+.sidebar-section.collapsed
+.section-arrow {
+    transform: rotate(-90deg);
+}
+
+/* ==========================================
+   object-item
+========================================== */
 
 .object-item {
     padding: 8px;
@@ -374,7 +433,7 @@ button:active {
     pointer-events: none;
 
     /* 背景永遠在最下面 */
-    z-index: -100;
+    z-index: -1000;
 }
 
 
@@ -390,9 +449,6 @@ button:active {
 
     width: 1920px;
     height: 1080px;
-
-    /* 一般物件 / 場景標誌從 Layer 1 開始 */
-    z-index: 1;
 
     pointer-events: none;
 }
@@ -484,6 +540,26 @@ button:active {
 
 .scene-object.selected {
     outline: 2px solid #4da6ff;
+}
+
+/* ==========================================
+   旋轉角度控制
+========================================== */
+
+.angle-control {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+#angleInput {
+    width: 100%;
+}
+
+#angleRange {
+    width: 100%;
+    padding: 0;
+    margin: 0;
 }
 
 /* =========================================================
@@ -735,90 +811,176 @@ button:active {
     style="display:none;"
 >
 
-    <h3>場景元件</h3>
-<div id="sceneObjectList"></div>
+    <!-- =========================
+     場景元件
+========================= -->
+<div class="sidebar-section">
 
-<h3>地形標誌元件</h3>
-<div id="markerObjectList"></div>
-
-    <h3>選取物件</h3>
-
-    <div id="noSelection">
-        尚未選取物件
-    </div>
-
-    <div id="editor" style="display:none;">
-
-        <div class="control">
-            <label>名稱</label>
-            <input id="nameInput" type="text">
-        </div>
-
-<div class="row">
-    <div class="control">
-        <label>X</label>
-        <input id="xInput" type="number">
-    </div>
-
-    <div class="control">
-        <label>Y</label>
-        <input id="yInput" type="number">
-    </div>
-</div>
-
-<div class="control">
-    <label>圖層</label>
-    <input
-        id="zInput"
-        type="number"
-        step="1"
+    <button
+        type="button"
+        class="sidebar-section-header"
+        onclick="toggleSidebarSection('sceneObjectsSection')"
     >
-</div>
+        <span>場景元件</span>
+        <span class="section-arrow">▼</span>
+    </button>
 
-<div class="row">
-    <div class="control">
-        <label>寬度</label>
-        <input id="widthInput" type="number">
+    <div
+        id="sceneObjectsSection"
+        class="sidebar-section-content"
+    >
+        <div id="sceneObjectList"></div>
     </div>
 
-    <div class="control">
-        <label>高度</label>
-        <input id="heightInput" type="number">
-    </div>
 </div>
 
+
+<!-- =========================
+     地形標誌元件
+========================= -->
+<div class="sidebar-section">
+
+    <button
+        type="button"
+        class="sidebar-section-header"
+        onclick="toggleSidebarSection('markerObjectsSection')"
+    >
+        <span>地形標誌元件</span>
+        <span class="section-arrow">▼</span>
+    </button>
+
+    <div
+        id="markerObjectsSection"
+        class="sidebar-section-content"
+    >
+        <div id="markerObjectList"></div>
+    </div>
+
+</div>
+
+
+<!-- =========================
+     選取物件
+========================= -->
+<h3>選取物件</h3>
+
+<div id="noSelection">
+    尚未選取物件
+</div>
+
+<div id="editor" style="display:none;">
+
+    <div class="control">
+        <label>名稱</label>
+        <input id="nameInput" type="text">
+    </div>
+
+    <div class="row">
         <div class="control">
-            <label>旋轉角度</label>
-            <input id="angleInput" type="number">
+            <label>X</label>
+            <input id="xInput" type="number">
         </div>
 
         <div class="control">
-            <label>
-                透明度：
-                <span id="opacityValue">100%</span>
-            </label>
+            <label>Y</label>
+            <input id="yInput" type="number">
+        </div>
+    </div>
+
+    <div class="control">
+        <label>圖層</label>
+        <input
+            id="zInput"
+            type="number"
+            step="1"
+        >
+    </div>
+
+    <div class="row">
+        <div class="control">
+            <label>寬度</label>
+            <input id="widthInput" type="number">
+        </div>
+
+        <div class="control">
+            <label>高度</label>
+            <input id="heightInput" type="number">
+        </div>
+    </div>
+
+    <div class="control">
+        <label>
+            旋轉角度：
+            <span id="angleValue">0°</span>
+        </label>
+
+        <div class="angle-control">
+            <input
+                id="angleInput"
+                type="number"
+                min="0"
+                max="360"
+                step="1"
+                value="0"
+            >
 
             <input
-                id="opacityInput"
+                id="angleRange"
                 type="range"
                 min="0"
-                max="100"
-                value="100"
+                max="360"
+                step="1"
+                value="0"
             >
         </div>
-
-
-
     </div>
 
-<h3>場景列表</h3>
+    <div class="control">
+        <label>
+            透明度：
+            <span id="opacityValue">100%</span>
+        </label>
 
-<div id="sceneList"></div>
+        <input
+            id="opacityInput"
+            type="range"
+            min="0"
+            max="100"
+            value="100"
+        >
+    </div>
 
-<div class="row">
-    <button id="addScene">＋新增場景</button>
-    <button id="deleteScene">刪除場景</button>
 </div>
+
+
+<!-- =========================
+     場景列表
+========================= -->
+<div class="sidebar-section">
+
+    <button
+        type="button"
+        class="sidebar-section-header"
+        onclick="toggleSidebarSection('sceneListSection')"
+    >
+        <span>場景列表</span>
+        <span class="section-arrow">▼</span>
+    </button>
+
+    <div
+        id="sceneListSection"
+        class="sidebar-section-content"
+    >
+        <div id="sceneList"></div>
+
+        <div class="row">
+            <button id="addScene">＋新增場景</button>
+            <button id="deleteScene">刪除場景</button>
+        </div>
+    </div>
+
+</div>
+
 
 <div id="sceneEditor">
 
@@ -1176,7 +1338,7 @@ function createScene(name = "新場景") {
 
         /* true = 等比例裁切符合尺寸
            false = 直接拉伸符合尺寸 */
-        foregroundFit: false,
+        foregroundFit: true,
 
 /*
  * 格線吸附
@@ -1294,10 +1456,10 @@ foregroundHeightInput.value =
     scene.foregroundHeight ?? 30;
 
 foregroundFitInput.checked =
-    scene.foregroundFit ?? false;
+    scene.foregroundFit ?? true;
 
 alignWithGridInput.checked =
-    scene.alignWithGrid ?? false;
+    scene.alignWithGrid ?? true;
 
 updateForegroundStyle();
 
@@ -1455,8 +1617,6 @@ const foregroundImageInput =
 const replaceImageInput =
     document.getElementById("replaceImageInput");
     
-const objectList = document.getElementById("objectList");
-
 const objectsContainer = document.getElementById("objects");
 
 const background = document.getElementById("background");
@@ -1604,6 +1764,26 @@ function createId() {
 function getSelectedObject() {
 
     return getObjects().find(o => o.id === selectedId);
+
+}
+
+/* ==========================================
+   左側區塊折疊
+========================================== */
+
+function toggleSidebarSection(sectionId) {
+
+    const content =
+        document.getElementById(sectionId);
+
+    if (!content) return;
+
+    const section =
+        content.closest(".sidebar-section");
+
+    if (!section) return;
+
+    section.classList.toggle("collapsed");
 
 }
 
@@ -2717,7 +2897,7 @@ sharedObjects.forEach(object => {
             object.height + "px";
 
         img.style.zIndex =
-            object.z;
+            Number(object.z) + 1;
 
         img.style.opacity =
             object.opacity;
@@ -5043,6 +5223,12 @@ function selectObject(id) {
 
     document.getElementById("angleInput").value =
         object.angle;
+        
+    document.getElementById("angleRange").value =
+    object.angle;
+
+document.getElementById("angleValue").textContent =
+    Math.round(object.angle) + "°";
 
     document.getElementById("opacityInput").value =
         object.opacity * 100;
@@ -5216,6 +5402,10 @@ render();
 });
 
 
+/* ==========================================
+   旋轉角度：數字輸入框
+========================================== */
+
 document.getElementById("angleInput")
 .addEventListener("input", function() {
 
@@ -5223,8 +5413,56 @@ document.getElementById("angleInput")
 
     if (!object) return;
 
-    object.angle =
-        Number(this.value) || 0;
+    let value =
+        Number(this.value);
+
+    if (!Number.isFinite(value)) {
+        value = 0;
+    }
+
+    value = Math.max(
+        0,
+        Math.min(360, value)
+    );
+
+    object.angle = value;
+
+    /* 同步滑桿 */
+    document.getElementById("angleRange").value =
+        value;
+
+    /* 同步文字 */
+    document.getElementById("angleValue").textContent =
+        Math.round(value) + "°";
+
+    render();
+
+});
+
+
+/* ==========================================
+   旋轉角度：滑桿
+========================================== */
+
+document.getElementById("angleRange")
+.addEventListener("input", function() {
+
+    const object = getSelectedObject();
+
+    if (!object) return;
+
+    const value =
+        Number(this.value);
+
+    object.angle = value;
+
+    /* 同步數字輸入框 */
+    document.getElementById("angleInput").value =
+        value;
+
+    /* 同步角度文字 */
+    document.getElementById("angleValue").textContent =
+        value + "°";
 
     render();
 
