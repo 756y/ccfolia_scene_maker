@@ -171,6 +171,51 @@ button:active {
     border-color: #666;
 }
 
+/* ==========================================
+   前景設定 Checkbox
+   文字在左、核取方塊固定最右邊
+========================================== */
+
+.checkbox-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+
+    width: 100%;
+    min-width: 0;
+}
+
+.checkbox-row label {
+    display: block;
+
+    /* 文字佔左邊剩餘空間 */
+    flex: 1 1 auto;
+
+    /* 非常重要：禁止文字被 flex 壓縮 */
+    min-width: 0;
+
+    margin: 0;
+    padding: 0;
+
+    /* 保持文字橫向 */
+    white-space: nowrap;
+}
+
+.checkbox-row input[type="checkbox"] {
+    /* 固定在最右邊 */
+    flex: 0 0 auto;
+
+    width: 16px;
+    height: 16px;
+
+    margin: 0 0 0 10px;
+    padding: 0;
+}
+
+/* ==========================================
+   sceneList
+========================================== */
 #sceneList {
     border: 1px solid #444;
     background: #222;
@@ -709,14 +754,16 @@ button:active {
             <input id="nameInput" type="text">
         </div>
 
-        <div class="control">
-            <label>X</label>
-            <input id="xInput" type="number">
-        </div>
+<div class="row">
+    <div class="control">
+        <label>X</label>
+        <input id="xInput" type="number">
+    </div>
 
-        <div class="control">
-    <label>Y</label>
-    <input id="yInput" type="number">
+    <div class="control">
+        <label>Y</label>
+        <input id="yInput" type="number">
+    </div>
 </div>
 
 <div class="control">
@@ -728,15 +775,17 @@ button:active {
     >
 </div>
 
-<div class="control">
-    <label>寬度</label>
-    <input id="widthInput" type="number">
-</div>
+<div class="row">
+    <div class="control">
+        <label>寬度</label>
+        <input id="widthInput" type="number">
+    </div>
 
-        <div class="control">
-            <label>高度</label>
-            <input id="heightInput" type="number">
-        </div>
+    <div class="control">
+        <label>高度</label>
+        <input id="heightInput" type="number">
+    </div>
+</div>
 
         <div class="control">
             <label>旋轉角度</label>
@@ -786,6 +835,7 @@ button:active {
          前景尺寸
     ========================== -->
 
+<div class="row">
     <div class="control">
         <label>前景寬度</label>
         <input
@@ -805,25 +855,28 @@ button:active {
             step="1"
         >
     </div>
+</div>
 
-    <div class="control">
-        <label>
-            <input
-                id="foregroundFitInput"
-                type="checkbox"
-            >
-            圖片符合前景尺寸
-        </label>
-    </div>
+<div class="control checkbox-row">
+    <label for="foregroundFitInput">
+        圖片符合前景尺寸
+    </label>
+
+    <input
+        id="foregroundFitInput"
+        type="checkbox"
+    >
+</div>
     
-    <div class="control">
-    <label>
-        <input
-            id="alignWithGridInput"
-            type="checkbox"
-        >
+<div class="control checkbox-row">
+    <label for="alignWithGridInput">
         對齊格線（拖曳時自動吸附）
     </label>
+
+    <input
+        id="alignWithGridInput"
+        type="checkbox"
+    >
 </div>
 
     <div class="row">
