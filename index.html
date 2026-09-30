@@ -567,6 +567,13 @@ button:active {
     style="display:none;"
 >
 
+<input
+    type="file"
+    id="replaceImageInput"
+    accept="image/*"
+    style="display:none;"
+>
+
     <h3>場景元件</h3>
 <div id="sceneObjectList"></div>
 
@@ -789,6 +796,17 @@ button:active {
     >
         ↕
     </button>
+    
+    <!-- 更換圖片 -->
+<button
+    type="button"
+    data-quick-action="replaceImage"
+    title="更換圖片"
+>
+    🖼
+</button>
+
+<div class="quick-divider"></div>
 
     <div class="quick-divider"></div>
 
@@ -1241,6 +1259,9 @@ const backgroundImageInput =
 const foregroundImageInput =
     document.getElementById("foregroundImageInput");
 
+const replaceImageInput =
+    document.getElementById("replaceImageInput");
+    
 const objectList = document.getElementById("objectList");
 
 const objectsContainer = document.getElementById("objects");
@@ -2168,6 +2189,79 @@ selectObject(object.id);
 
 });
 
+/* ==========================================
+   更換目前選取物件的圖片
+========================================== */
+
+replaceImageInput.addEventListener(
+    "change",
+    async function(e) {
+
+        const file = e.target.files[0];
+
+        if (!file) return;
+
+        const object = getSelectedObject();
+
+        if (!object) {
+            this.value = "";
+            return;
+        }
+
+        try {
+
+            /*
+             * 使用和新增圖片相同的圖片處理流程
+             */
+            const prepared =
+                await prepareImage(file);
+
+            /*
+             * 更換圖片本身
+             */
+            object.imageUrl =
+                prepared.dataURL;
+
+            /*
+             * 名稱也同步改成新圖片檔名
+             */
+            object.name =
+                file.name;
+
+            /*
+             * 注意：
+             * X / Y / 寬 / 高 / 旋轉 / 透明度 /
+             * 鏡像 / 圖層 Z 都不修改。
+             *
+             * 所以換圖後會保留原本物件的位置和設定。
+             */
+
+            render();
+
+            selectObject(object.id);
+
+        } catch (error) {
+
+            console.error(
+                "更換圖片失敗：",
+                error
+            );
+
+            alert(
+                "更換圖片失敗：\n" +
+                error.message
+            );
+
+        }
+
+        /*
+         * 讓下一次選同一張圖片時
+         * change 事件仍然會觸發
+         */
+        this.value = "";
+
+    }
+);
 
 /* ==========================================
    設定背景
@@ -2618,6 +2712,14 @@ function executeQuickAction(action) {
         getSelectedObject();
 
     if (!object) return;
+    
+    if (action === "replaceImage") {
+
+    replaceImageInput.click();
+
+    return;
+
+}
 
 
     /*
