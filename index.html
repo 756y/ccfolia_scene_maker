@@ -792,23 +792,41 @@ button:active {
 
     <div class="quick-divider"></div>
 
-    <!-- 圖層上移 -->
-    <button
-        type="button"
-        data-quick-action="moveUp"
-        title="圖層上移"
-    >
-        ↑
-    </button>
+    <!-- 圖層置頂 -->
+<button
+    type="button"
+    data-quick-action="moveTop"
+    title="移到最上層"
+>
+    ⬆
+</button>
 
-    <!-- 圖層下移 -->
-    <button
-        type="button"
-        data-quick-action="moveDown"
-        title="圖層下移"
-    >
-        ↓
-    </button>
+<!-- 圖層上移一層 -->
+<button
+    type="button"
+    data-quick-action="moveUp"
+    title="上移一層"
+>
+    ↑
+</button>
+
+<!-- 圖層下移一層 -->
+<button
+    type="button"
+    data-quick-action="moveDown"
+    title="下移一層"
+>
+    ↓
+</button>
+
+<!-- 圖層置底 -->
+<button
+    type="button"
+    data-quick-action="moveBottom"
+    title="移到最下層"
+>
+    ⬇
+</button>
 
     <div class="quick-divider"></div>
 
@@ -2634,30 +2652,58 @@ function executeQuickAction(action) {
     }
 
 
-    /*
-     * 圖層上移
-     */
+/*
+ * 圖層上移一層
+ */
 
-    if (action === "moveUp") {
+if (action === "moveUp") {
 
-        moveSelectedObjectLayer(1);
+    moveSelectedObjectLayer(1);
 
-        return;
+    return;
 
-    }
+}
 
 
-    /*
-     * 圖層下移
-     */
+/*
+ * 圖層下移一層
+ */
 
-    if (action === "moveDown") {
+if (action === "moveDown") {
 
-        moveSelectedObjectLayer(-1);
+    moveSelectedObjectLayer(-1);
 
-        return;
+    return;
 
-    }
+}
+
+
+/*
+ * 圖層置頂
+ */
+
+if (action === "moveTop") {
+
+    moveSelectedObjectToTop();
+
+    return;
+
+}
+
+
+/*
+ * 圖層置底
+ */
+
+if (action === "moveBottom") {
+
+    moveSelectedObjectToBottom();
+
+    return;
+
+}
+    
+    
 
 
     /*
@@ -2753,6 +2799,122 @@ function moveSelectedObjectLayer(direction) {
 
 }
 
+/* =========================================================
+   圖層置頂
+========================================================= */
+
+function moveSelectedObjectToTop() {
+
+    const objects =
+        getObjects();
+
+    const object =
+        getSelectedObject();
+
+    if (!object) return;
+
+
+    const sorted =
+        [...objects]
+            .sort(
+                (a, b) =>
+                    a.z - b.z
+            );
+
+
+    const highest =
+        sorted[sorted.length - 1];
+
+    if (!highest) return;
+
+
+    /*
+     * 已經是最上層
+     */
+
+    if (object.id === highest.id) {
+        return;
+    }
+
+
+    /*
+     * 取得目前最高 z
+     */
+
+    const maxZ =
+        highest.z;
+
+
+    /*
+     * 讓目前物件直接到最上面
+     */
+
+    object.z =
+        maxZ + 1;
+
+
+    render();
+
+}
+
+
+/* =========================================================
+   圖層置底
+========================================================= */
+
+function moveSelectedObjectToBottom() {
+
+    const objects =
+        getObjects();
+
+    const object =
+        getSelectedObject();
+
+    if (!object) return;
+
+
+    const sorted =
+        [...objects]
+            .sort(
+                (a, b) =>
+                    a.z - b.z
+            );
+
+
+    const lowest =
+        sorted[0];
+
+    if (!lowest) return;
+
+
+    /*
+     * 已經是最下層
+     */
+
+    if (object.id === lowest.id) {
+        return;
+    }
+
+
+    /*
+     * 取得目前最低 z
+     */
+
+    const minZ =
+        lowest.z;
+
+
+    /*
+     * 讓目前物件直接到最下面
+     */
+
+    object.z =
+        minZ - 1;
+
+
+    render();
+
+}
 
 /* =========================================================
    複製目前物件
