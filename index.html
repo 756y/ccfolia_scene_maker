@@ -3688,6 +3688,37 @@ function updateSelectionVisual() {
 
 }
 
+
+/* ==========================================
+   更新目前選取物件的 X / Y 座標顯示
+========================================== */
+
+function updatePositionInputs(object) {
+
+    if (!object) return;
+
+    /*
+     * X / Y 使用 Scene 中央作為座標原點
+     *
+     * 每一格 = 24px
+     */
+
+    const logicalX =
+        (object.x - SCENE_ORIGIN_X) /
+        SCENE_GRID_SIZE;
+
+    const logicalY =
+        (object.y - SCENE_ORIGIN_Y) /
+        SCENE_GRID_SIZE;
+
+    document.getElementById("xInput").value =
+        Math.round(logicalX);
+
+    document.getElementById("yInput").value =
+        Math.round(logicalY);
+}
+
+
 /* ==========================================
    選取
 ========================================== */
@@ -3715,11 +3746,7 @@ function selectObject(id) {
     document.getElementById("nameInput").value =
         object.name;
 
-    document.getElementById("xInput").value =
-        Math.round(object.x);
-
-    document.getElementById("yInput").value =
-        Math.round(object.y);
+    updatePositionInputs(object);
 
     document.getElementById("widthInput").value =
         Math.round(object.width);
@@ -4144,6 +4171,9 @@ document.addEventListener(
             );
 
         }
+        
+        /* 即時更新右側 X / Y */
+        updatePositionInputs(dragObject);
 
 
         /*
@@ -4166,37 +4196,28 @@ function stopDrag(e) {
 
     if (!dragging) return;
 
-
     /*
-     * 如果有 Pointer Capture，
-     * 嘗試解除
+     * 拖曳結束前，再同步一次 X / Y
      */
+    updatePositionInputs(dragObject);
+
     if (
         e &&
         e.currentTarget &&
         e.pointerId !== undefined &&
         e.currentTarget.releasePointerCapture
     ) {
-
         try {
-
             e.currentTarget.releasePointerCapture(
                 e.pointerId
             );
-
         } catch (error) {
-
             /* 不需要中斷拖曳結束流程 */
-
         }
-
     }
 
-
     dragging = false;
-
     dragObject = null;
-
 }
 
 
