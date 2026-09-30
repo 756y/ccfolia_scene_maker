@@ -442,6 +442,70 @@ button:active {
 }
 
 /* =========================================================
+   圖片縮放控制點
+   ========================================================= */
+
+.resize-handle {
+    position: absolute;
+
+    width: 12px;
+    height: 12px;
+
+    margin-left: -6px;
+    margin-top: -6px;
+
+    background: #4da6ff;
+
+    border: 2px solid white;
+
+    border-radius: 50%;
+
+    z-index: 2000;
+
+    pointer-events: auto;
+
+    touch-action: none;
+
+    box-sizing: border-box;
+}
+
+/* 四個角 */
+
+.resize-handle.nw {
+    cursor: nwse-resize;
+}
+
+.resize-handle.ne {
+    cursor: nesw-resize;
+}
+
+.resize-handle.sw {
+    cursor: nesw-resize;
+}
+
+.resize-handle.se {
+    cursor: nwse-resize;
+}
+
+/* 四個邊 */
+
+.resize-handle.n {
+    cursor: ns-resize;
+}
+
+.resize-handle.s {
+    cursor: ns-resize;
+}
+
+.resize-handle.w {
+    cursor: ew-resize;
+}
+
+.resize-handle.e {
+    cursor: ew-resize;
+}
+
+/* =========================================================
    選取物件浮動快捷工具列
 ========================================================= */
 
@@ -2649,9 +2713,1078 @@ sharedObjects.forEach(object => {
     updateDropHint();
 
     /* 更新圖片上方的快捷工具列 */
-    updateObjectQuickToolbar();
+updateObjectQuickToolbar();
+
+/* 更新圖片縮放控制點 */
+renderResizeHandles();
 
 }
+
+/* =========================================================
+   圖片縮放功能
+   ---------------------------------------------------------
+   支援：
+   - 滑鼠
+   - 手指
+   - 手寫筆
+   - 四邊自由縮放
+   - 四角等比例縮放
+   - 支援旋轉後縮放
+   - 同步右側寬度 / 高度
+========================================================= */
+
+
+/* ---------------------------------------------------------
+   目前正在縮放的物件
+--------------------------------------------------------- */
+
+let resizing = false;
+
+let resizeObject = null;
+
+let resizeHandle = null;
+
+let resizeStartX = 0;
+
+let resizeStartY = 0;
+
+let resizeStartWidth = 0;
+
+let resizeStartHeight = 0;
+
+let resizeStartCenterX = 0;
+
+let resizeStartCenterY = 0;
+
+let resizeAspectRatio = 1;
+
+
+/* ---------------------------------------------------------
+   取得滑鼠 / 手指在物件「未旋轉座標」中的位置
+--------------------------------------------------------- */
+
+function getResizeLocalPoint(
+    object,
+    clientX,
+    clientY
+) {
+
+    /*
+     * Scene 有縮放，
+     * 所以先把螢幕座標轉回 Scene 座標。
+     */
+
+    const sceneRect =
+        sceneCanvas.getBoundingClientRect();
+
+    const sceneX =
+        (clientX - sceneRect.left) /
+        viewScale;
+
+    const sceneY =
+        (clientY - sceneRect.top) /
+        viewScale;
+
+
+    /*
+     * 物件中心
+     */
+
+    const centerX =
+        object.x +
+        object.width / 2;
+
+    const centerY =
+        object.y +
+        object.height / 2;
+
+
+    /*
+     * 先取得相對於中心的座標
+     */
+
+    const dx =
+        sceneX - centerX;
+
+    const dy =
+        sceneY - centerY;
+
+
+    /*
+     * 反向旋轉。
+     *
+     * 因為圖片本身可能已經旋轉，
+     * 所以需要把滑鼠位置轉回圖片自己的座標系。
+     */
+
+    const angle =
+        -(Number(object.angle) || 0) *
+        Math.PI / 180;
+
+    const cos =
+        Math.cos(angle);
+
+    const sin =
+        Math.sin(angle);
+
+
+    return {
+
+        x:
+            dx * cos -
+            dy * sin,
+
+        y:
+            dx * sin +
+            dy * cos
+
+    };
+
+}
+
+
+/* ---------------------------------------------------------
+   取得縮放控制點
+--------------------------------------------------------- */
+
+function getResizeHandlePosition(
+    object,
+    handle
+) {
+
+    const w =
+        object.width;
+
+    const h =
+        object.height;
+
+    let x =
+        w / 2;
+
+    let y =
+        h / 2;
+
+
+    switch (handle) {
+
+        case "nw":
+            x = 0;
+            y = 0;
+            break;
+
+        case "n":
+            x = w / 2;
+            y = 0;
+            break;
+
+        case "ne":
+            x = w;
+            y = 0;
+            break;
+
+        case "e":
+            x = w;
+            y = h / 2;
+            break;
+
+        case "se":
+            x = w;
+            y = h;
+            break;
+
+        case "s":
+            x = w / 2;
+            y = h;
+            break;
+
+        case "sw":
+            x = 0;
+            y = h;
+            break;
+
+        case "w":
+            x = 0;
+            y = h / 2;
+            break;
+
+    }
+
+    return {
+        x,
+        y
+    };
+
+}
+
+
+/* ---------------------------------------------------------
+   更新縮放控制點的位置
+--------------------------------------------------------- */
+
+function updateResizeHandlePositions() {
+
+    const object =
+        getSelectedObject();
+
+    if (!object) return;
+
+
+    const handles =
+        document.querySelectorAll(
+            ".resize-handle"
+        );
+
+
+    const centerX =
+        object.x +
+        object.width / 2;
+
+    const centerY =
+        object.y +
+        object.height / 2;
+
+
+    const angle =
+        (Number(object.angle) || 0) *
+        Math.PI / 180;
+
+
+    const cos =
+        Math.cos(angle);
+
+    const sin =
+        Math.sin(angle);
+
+
+    handles.forEach(handle => {
+
+        const type =
+            handle.dataset.handle;
+
+        const point =
+            getResizeHandlePosition(
+                object,
+                type
+            );
+
+
+        /*
+         * 轉成相對中心座標
+         */
+
+        const localX =
+            point.x -
+            object.width / 2;
+
+        const localY =
+            point.y -
+            object.height / 2;
+
+
+        /*
+         * 再旋轉回 Scene 座標
+         */
+
+        const worldX =
+            centerX +
+            localX * cos -
+            localY * sin;
+
+        const worldY =
+            centerY +
+            localX * sin +
+            localY * cos;
+
+
+        handle.style.left =
+            worldX + "px";
+
+        handle.style.top =
+            worldY + "px";
+
+
+        /*
+         * 讓控制點本身保持正方向，
+         * 不跟著圖片一起旋轉。
+         */
+
+        handle.style.transform =
+            "translate(-50%, -50%)";
+
+    });
+
+}
+
+
+/* ---------------------------------------------------------
+   建立縮放控制點
+--------------------------------------------------------- */
+
+function renderResizeHandles() {
+
+    /*
+     * 先刪除舊控制點
+     */
+
+    document
+        .querySelectorAll(".resize-handle")
+        .forEach(handle => {
+            handle.remove();
+        });
+
+
+    const object =
+        getSelectedObject();
+
+
+    /*
+     * 沒選取物件就不用顯示
+     */
+
+    if (!object) {
+        return;
+    }
+
+
+    /*
+     * 鎖定的畫面元件不能縮放。
+     *
+     * 地形標誌仍然可以縮放。
+     */
+
+    if (
+        object.type !== "sceneMarker" &&
+        object.locked === true
+    ) {
+        return;
+    }
+
+
+    const handles = [
+        "nw",
+        "n",
+        "ne",
+        "e",
+        "se",
+        "s",
+        "sw",
+        "w"
+    ];
+
+
+    handles.forEach(type => {
+
+        const handle =
+            document.createElement("div");
+
+        handle.className =
+            "resize-handle " +
+            type;
+
+        handle.dataset.handle =
+            type;
+
+        handle.addEventListener(
+            "pointerdown",
+            startResize
+        );
+
+
+        /*
+         * 防止事件傳到圖片，
+         * 否則會同時開始「拖曳圖片」。
+         */
+
+        handle.addEventListener(
+            "click",
+            function(e) {
+                e.stopPropagation();
+            }
+        );
+
+
+        objectsContainer.appendChild(
+            handle
+        );
+
+    });
+
+
+    updateResizeHandlePositions();
+
+}
+
+
+/* ---------------------------------------------------------
+   開始縮放
+--------------------------------------------------------- */
+
+function startResize(e) {
+
+    e.preventDefault();
+
+    e.stopPropagation();
+
+
+    const object =
+        getSelectedObject();
+
+    if (!object) return;
+
+
+    /*
+     * 鎖定物件不能縮放
+     */
+
+    if (
+        object.type !== "sceneMarker" &&
+        object.locked === true
+    ) {
+        return;
+    }
+
+
+    resizing = true;
+
+    resizeObject =
+        object;
+
+    resizeHandle =
+        e.currentTarget.dataset.handle;
+
+
+    resizeStartX =
+        e.clientX;
+
+    resizeStartY =
+        e.clientY;
+
+
+    resizeStartWidth =
+        object.width;
+
+    resizeStartHeight =
+        object.height;
+
+
+    resizeStartCenterX =
+        object.x +
+        object.width / 2;
+
+    resizeStartCenterY =
+        object.y +
+        object.height / 2;
+
+
+    resizeAspectRatio =
+        object.width /
+        object.height;
+
+
+    /*
+     * Pointer Capture
+     *
+     * 手指操作時特別重要。
+     */
+
+    if (
+        e.currentTarget.setPointerCapture &&
+        e.pointerId !== undefined
+    ) {
+
+        try {
+
+            e.currentTarget.setPointerCapture(
+                e.pointerId
+            );
+
+        } catch (error) {
+
+            console.warn(
+                "Resize Pointer Capture 啟用失敗：",
+                error
+            );
+
+        }
+
+    }
+
+}
+
+
+/* ---------------------------------------------------------
+   縮放中
+--------------------------------------------------------- */
+
+document.addEventListener(
+    "pointermove",
+    function(e) {
+
+        if (
+            !resizing ||
+            !resizeObject
+        ) {
+            return;
+        }
+
+
+        e.preventDefault();
+
+
+        const object =
+            resizeObject;
+
+
+        /*
+         * 目前滑鼠 / 手指在圖片自己的座標系中
+         */
+
+        const point =
+            getResizeLocalPoint(
+                object,
+                e.clientX,
+                e.clientY
+            );
+
+
+        const startW =
+            resizeStartWidth;
+
+        const startH =
+            resizeStartHeight;
+
+
+        /*
+         * 原本物件中心
+         */
+
+        const centerX =
+            resizeStartCenterX;
+
+        const centerY =
+            resizeStartCenterY;
+
+
+        /*
+         * 最小尺寸
+         */
+
+        const MIN_SIZE = 10;
+
+
+        let newWidth =
+            startW;
+
+        let newHeight =
+            startH;
+
+
+        /*
+         * -----------------------------------------------
+         * 角落：
+         * 寬度、高度等比例縮放
+         * -----------------------------------------------
+         */
+
+        if (
+            resizeHandle === "nw" ||
+            resizeHandle === "ne" ||
+            resizeHandle === "se" ||
+            resizeHandle === "sw"
+        ) {
+
+            /*
+             * 依照目前拉動的方向，
+             * 計算距離中心的 X / Y。
+             */
+
+            let widthFromPoint =
+                Math.abs(point.x) * 2;
+
+            let heightFromPoint =
+                Math.abs(point.y) * 2;
+
+
+            /*
+             * 依照哪個方向比較明顯，
+             * 決定等比例縮放基準。
+             */
+
+            const widthScale =
+                widthFromPoint /
+                startW;
+
+            const heightScale =
+                heightFromPoint /
+                startH;
+
+
+            let scale =
+                Math.max(
+                    widthScale,
+                    heightScale
+                );
+
+
+            /*
+             * 避免縮到 0。
+             */
+
+            scale =
+                Math.max(
+                    scale,
+                    MIN_SIZE / Math.max(
+                        startW,
+                        startH
+                    )
+                );
+
+
+            newWidth =
+                startW * scale;
+
+            newHeight =
+                startH * scale;
+
+
+            /*
+             * 判斷是否應該翻到另一側。
+             *
+             * 為了讓操作簡單，
+             * 這裡限制最小尺寸，不允許負尺寸。
+             */
+
+            newWidth =
+                Math.max(
+                    MIN_SIZE,
+                    newWidth
+                );
+
+            newHeight =
+                Math.max(
+                    MIN_SIZE,
+                    newHeight
+                );
+
+        }
+
+
+        /*
+         * -----------------------------------------------
+         * 左右邊
+         * -----------------------------------------------
+         */
+
+        else if (
+            resizeHandle === "e" ||
+            resizeHandle === "w"
+        ) {
+
+            newWidth =
+                Math.max(
+                    MIN_SIZE,
+                    Math.abs(point.x) * 2
+                );
+
+            newHeight =
+                startH;
+
+        }
+
+
+        /*
+         * -----------------------------------------------
+         * 上下邊
+         * -----------------------------------------------
+         */
+
+        else if (
+            resizeHandle === "n" ||
+            resizeHandle === "s"
+        ) {
+
+            newWidth =
+                startW;
+
+            newHeight =
+                Math.max(
+                    MIN_SIZE,
+                    Math.abs(point.y) * 2
+                );
+
+        }
+
+
+        /*
+         * -----------------------------------------------
+         * 保留「相反邊」的位置
+         *
+         * 例如：
+         *
+         * 拉右邊
+         * → 左邊固定
+         *
+         * 拉左邊
+         * → 右邊固定
+         *
+         * 角落也是同樣概念。
+         * -----------------------------------------------
+         */
+
+        let anchorLocalX =
+            0;
+
+        let anchorLocalY =
+            0;
+
+
+        switch (resizeHandle) {
+
+            case "nw":
+                anchorLocalX = startW / 2;
+                anchorLocalY = startH / 2;
+                break;
+
+            case "n":
+                anchorLocalX = 0;
+                anchorLocalY = startH / 2;
+                break;
+
+            case "ne":
+                anchorLocalX = -startW / 2;
+                anchorLocalY = startH / 2;
+                break;
+
+            case "e":
+                anchorLocalX = -startW / 2;
+                anchorLocalY = 0;
+                break;
+
+            case "se":
+                anchorLocalX = -startW / 2;
+                anchorLocalY = -startH / 2;
+                break;
+
+            case "s":
+                anchorLocalX = 0;
+                anchorLocalY = -startH / 2;
+                break;
+
+            case "sw":
+                anchorLocalX = startW / 2;
+                anchorLocalY = -startH / 2;
+                break;
+
+            case "w":
+                anchorLocalX = startW / 2;
+                anchorLocalY = 0;
+                break;
+
+        }
+
+
+        /*
+         * 上面的 anchor 是「舊尺寸」下，
+         * 相對中心的位置。
+         *
+         * 因為我們要讓這個點保持在原本世界座標，
+         * 所以先算出它在 Scene 中的位置。
+         */
+
+        const angle =
+            (Number(object.angle) || 0) *
+            Math.PI / 180;
+
+
+        const cos =
+            Math.cos(angle);
+
+        const sin =
+            Math.sin(angle);
+
+
+        const anchorWorldX =
+            centerX +
+            anchorLocalX * cos -
+            anchorLocalY * sin;
+
+        const anchorWorldY =
+            centerY +
+            anchorLocalX * sin +
+            anchorLocalY * cos;
+
+
+        /*
+         * 新中心：
+         *
+         * 反向把固定點移回新尺寸的相對位置。
+         */
+
+        let newAnchorLocalX =
+            anchorLocalX;
+
+        let newAnchorLocalY =
+            anchorLocalY;
+
+
+        if (
+            resizeHandle === "nw" ||
+            resizeHandle === "w" ||
+            resizeHandle === "sw"
+        ) {
+
+            newAnchorLocalX =
+                newWidth / 2;
+
+        }
+
+        else if (
+            resizeHandle === "ne" ||
+            resizeHandle === "e" ||
+            resizeHandle === "se"
+        ) {
+
+            newAnchorLocalX =
+                -newWidth / 2;
+
+        }
+
+        else {
+
+            newAnchorLocalX =
+                0;
+
+        }
+
+
+        if (
+            resizeHandle === "nw" ||
+            resizeHandle === "n" ||
+            resizeHandle === "ne"
+        ) {
+
+            newAnchorLocalY =
+                newHeight / 2;
+
+        }
+
+        else if (
+            resizeHandle === "sw" ||
+            resizeHandle === "s" ||
+            resizeHandle === "se"
+        ) {
+
+            newAnchorLocalY =
+                -newHeight / 2;
+
+        }
+
+        else {
+
+            newAnchorLocalY =
+                0;
+
+        }
+
+
+        const newCenterX =
+            anchorWorldX -
+            (
+                newAnchorLocalX * cos -
+                newAnchorLocalY * sin
+            );
+
+        const newCenterY =
+            anchorWorldY -
+            (
+                newAnchorLocalX * sin +
+                newAnchorLocalY * cos
+            );
+
+
+        /*
+         * 寫回物件資料
+         */
+
+        object.width =
+            newWidth;
+
+        object.height =
+            newHeight;
+
+        object.x =
+            newCenterX -
+            newWidth / 2;
+
+        object.y =
+            newCenterY -
+            newHeight / 2;
+
+
+        /*
+         * 如果有開啟格線吸附，
+         * 尺寸本身不吸附，
+         * 避免拖曳縮放時跳動。
+         *
+         * X / Y 可以照原本規則處理。
+         */
+
+        if (
+            getCurrentScene()?.alignWithGrid === true
+        ) {
+
+            /*
+             * 這裡刻意不呼叫 snapObjectToGrid()
+             *
+             * 否則縮放時圖片會一直跳格。
+             */
+
+        }
+
+
+        /*
+         * 同步右側寬度 / 高度
+         */
+
+        document.getElementById(
+            "widthInput"
+        ).value =
+            Math.round(
+                object.width
+            );
+
+        document.getElementById(
+            "heightInput"
+        ).value =
+            Math.round(
+                object.height
+            );
+
+
+        /*
+         * 同步 X / Y
+         */
+
+        updatePositionInputs(
+            object
+        );
+
+
+        /*
+         * 直接更新目前圖片，
+         * 不重新 render，
+         * 避免手機拖曳時畫面閃爍。
+         */
+
+        const img =
+            document.querySelector(
+                '.scene-object[data-id="' +
+                object.id +
+                '"]'
+            );
+
+
+        if (img) {
+
+            img.style.left =
+                object.x + "px";
+
+            img.style.top =
+                object.y + "px";
+
+            img.style.width =
+                object.width + "px";
+
+            img.style.height =
+                object.height + "px";
+
+        }
+
+
+        /*
+         * 更新控制點位置
+         */
+
+        updateResizeHandlePositions();
+
+
+        /*
+         * 更新上方快捷工具列
+         */
+
+        updateObjectQuickToolbar();
+
+    },
+    {
+        passive: false
+    }
+);
+
+
+/* ---------------------------------------------------------
+   結束縮放
+--------------------------------------------------------- */
+
+function stopResize(e) {
+
+    if (!resizing) {
+        return;
+    }
+
+
+    /*
+     * 最後再同步一次輸入框
+     */
+
+    if (resizeObject) {
+
+        document.getElementById(
+            "widthInput"
+        ).value =
+            Math.round(
+                resizeObject.width
+            );
+
+        document.getElementById(
+            "heightInput"
+        ).value =
+            Math.round(
+                resizeObject.height
+            );
+
+        updatePositionInputs(
+            resizeObject
+        );
+
+    }
+
+
+    /*
+     * 結束狀態
+     */
+
+    resizing = false;
+
+    resizeObject = null;
+
+    resizeHandle = null;
+
+}
+
+
+/* ---------------------------------------------------------
+   滑鼠 / 手指放開
+--------------------------------------------------------- */
+
+document.addEventListener(
+    "pointerup",
+    stopResize
+);
+
+document.addEventListener(
+    "pointercancel",
+    stopResize
+);
 
 /* =========================================================
    選取物件浮動快捷工具列
@@ -3428,9 +4561,11 @@ document
 
                 updateSelectionVisual();
 
-                updateObjectQuickToolbar();
+updateObjectQuickToolbar();
 
-                updateList();
+updateList();
+
+renderResizeHandles();
 
             }
 
@@ -3763,6 +4898,8 @@ function selectObject(id) {
 updateList();
 
 updateObjectQuickToolbar();
+
+renderResizeHandles();
 
 }
 
