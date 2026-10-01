@@ -257,6 +257,9 @@ button.full{width:100%}
 }
 #viewportControls button{height:30px;min-width:30px;padding:0 8px;background:#202c3c;border:1px solid #3a4b62;border-radius:6px}
 #viewportControls button:hover{background:#2d3d53}
+#undoButton{min-width:34px;font-size:15px}
+#undoButton:disabled{opacity:.42;cursor:not-allowed;background:#1a2432;border-color:#2b3749}
+#autosaveStatus{font-size:9px;color:#718097;min-width:72px;text-align:center}
 #zoomValue{min-width:50px;text-align:center;font-size:11px;color:#c4cfdd}
 
 #scene{position:absolute;width:1920px;height:1080px;left:50%;top:50%;margin-left:-960px;margin-top:-540px;background:#0c0f13;overflow:hidden;transform-origin:center center;box-shadow:0 0 0 1px #4a5666,0 18px 50px rgba(0,0,0,.5)}
@@ -452,6 +455,9 @@ button.full{width:100%}
 
     <div id="viewportControls">
 
+        <button id="undoButton" title="返回上一步（Ctrl+Z）" disabled>↶</button>
+        <span id="autosaveStatus" title="每 10 秒自動儲存">自動儲存：待機</span>
+
         <button id="zoomOut">−</button>
 
         <span id="zoomValue">100%</span>
@@ -625,6 +631,252 @@ const sharedObjects = [];
 let currentSceneId = null;
 
 let selectedId = null;
+
+
+/* =========================================================
+   復原歷史紀錄 + 自動儲存
+   ---------------------------------------------------------
+   最多保留最近 30 個資料變更動作。
+   拖曳 / 縮放會合併成一次動作，避免一次拖曳吃掉大量歷史。
+   ========================================================= */
+
+const MAX_HISTORY = 30;
+const AUTOSAVE_INTERVAL = 10000;
+const AUTOSAVE_DB_NAME = "cocofolia_scene_builder";
+const AUTOSAVE_STORE_NAME = "editor_state";
+const AUTOSAVE_KEY = "latest";
+
+const historyStack = [];
+let historyLastSnapshot = null;
+let historyLastSignature = "";
+let historyActionBaseline = null;
+let historyActionActive = false;
+let historyImageIds = new Map();
+let historyNextImageId = 1;
+let autosaveBusy = false;
+
+const undoButton = document.getElementById("undoButton");
+const autosaveStatus = document.getElementById("autosaveStatus");
+
+function getHistoryImageId(value) {
+    if (!value) return 0;
+    let id = historyImageIds.get(value);
+    if (!id) {
+        id = historyNextImageId++;
+        historyImageIds.set(value, id);
+    }
+    return id;
+}
+
+function cloneObjectForHistory(object) { return { ...object }; }
+
+function cloneEditorState() {
+    return {
+        scenes: scenes.map(scene => ({
+            ...scene,
+            objects: Array.isArray(scene.objects) ? scene.objects.map(cloneObjectForHistory) : []
+        })),
+        sharedObjects: sharedObjects.map(cloneObjectForHistory),
+        currentSceneId
+    };
+}
+
+function editorStateSignature(state = null) {
+    const source = state || { scenes, sharedObjects, currentSceneId };
+    const parts = [];
+
+    source.sharedObjects.forEach(object => {
+        parts.push(["shared",object.id,object.name,object.x,object.y,object.z,object.width,object.height,object.angle,object.opacity,object.flipX?1:0,object.flipY?1:0,object.visible===false?0:1,object.locked===true?1:0,getHistoryImageId(object.imageUrl)].join("|"));
+    });
+
+    source.scenes.forEach(scene => {
+        parts.push(["scene",scene.id,scene.name,getHistoryImageId(scene.backgroundData),getHistoryImageId(scene.foregroundData),scene.foregroundWidth,scene.foregroundHeight,scene.foregroundFit?1:0,scene.alignWithGrid?1:0].join("|"));
+        (scene.objects || []).forEach(object => {
+            parts.push(["marker",object.id,object.name,object.x,object.y,object.z,object.width,object.height,object.angle,object.opacity,object.flipX?1:0,object.flipY?1:0,object.visible===false?0:1,object.locked===true?1:0,object.type||"",getHistoryImageId(object.imageUrl)].join("|"));
+        });
+    });
+    return parts.join("¦");
+}
+
+function updateUndoButton() {
+    if (!undoButton) return;
+    undoButton.disabled = historyStack.length === 0;
+    undoButton.title = historyStack.length ? `返回上一步（Ctrl+Z）· 尚可返回 ${historyStack.length} 步` : "返回上一步（Ctrl+Z）";
+}
+
+function resetHistoryBaseline() {
+    historyStack.length = 0;
+    historyActionBaseline = null;
+    historyActionActive = false;
+    historyLastSnapshot = cloneEditorState();
+    historyLastSignature = editorStateSignature();
+    updateUndoButton();
+}
+
+function beginHistoryAction() {
+    if (historyActionActive) return;
+    historyActionBaseline = cloneEditorState();
+    historyActionActive = true;
+}
+
+function finishHistoryAction() {
+    if (!historyActionActive) return;
+    const currentSignature = editorStateSignature();
+    if (historyActionBaseline && currentSignature !== editorStateSignature(historyActionBaseline)) {
+        historyStack.push(historyActionBaseline);
+        if (historyStack.length > MAX_HISTORY) historyStack.shift();
+    }
+    historyActionBaseline = null;
+    historyActionActive = false;
+    historyLastSnapshot = cloneEditorState();
+    historyLastSignature = currentSignature;
+    updateUndoButton();
+}
+
+function recordHistoryAfterRender() {
+    const currentSignature = editorStateSignature();
+    if (historyActionActive) return;
+    if (historyLastSnapshot && currentSignature !== historyLastSignature) {
+        historyStack.push(historyLastSnapshot);
+        if (historyStack.length > MAX_HISTORY) historyStack.shift();
+    }
+    historyLastSnapshot = cloneEditorState();
+    historyLastSignature = currentSignature;
+    updateUndoButton();
+}
+
+function cloneEditorStateFromSnapshot(state) {
+    return {
+        scenes: (state.scenes || []).map(scene => ({...scene,objects:Array.isArray(scene.objects)?scene.objects.map(cloneObjectForHistory):[]})),
+        sharedObjects: (state.sharedObjects || []).map(cloneObjectForHistory),
+        currentSceneId: state.currentSceneId || null
+    };
+}
+
+function restoreEditorState(state) {
+    const restored = cloneEditorStateFromSnapshot(state);
+    historyActionActive = true;
+    scenes.splice(0, scenes.length, ...restored.scenes);
+    sharedObjects.splice(0, sharedObjects.length, ...restored.sharedObjects);
+    currentSceneId = restored.currentSceneId;
+    selectedId = null;
+    loadCurrentScene();
+    renderSceneList();
+    render();
+    historyActionActive = false;
+}
+
+function undoLastAction() {
+    if (!historyStack.length || historyActionActive) return;
+    const previousState = historyStack.pop();
+    restoreEditorState(previousState);
+    historyLastSnapshot = cloneEditorState();
+    historyLastSignature = editorStateSignature();
+    updateUndoButton();
+    saveEditorStateToStorage();
+}
+
+function buildPersistedState() {
+    return {version:1,savedAt:Date.now(),scenes:scenes,sharedObjects:sharedObjects,currentSceneId};
+}
+
+function applyPersistedState(saved) {
+    if (!saved || !Array.isArray(saved.scenes) || !Array.isArray(saved.sharedObjects)) return false;
+    scenes.splice(0, scenes.length, ...saved.scenes);
+    sharedObjects.splice(0, sharedObjects.length, ...saved.sharedObjects);
+    currentSceneId = saved.currentSceneId;
+    if (!scenes.length) { const firstScene=createScene("場景 1"); scenes.push(firstScene); currentSceneId=firstScene.id; }
+    if (!scenes.some(scene=>scene.id===currentSceneId)) currentSceneId=scenes[0].id;
+    scenes.forEach(scene=>{
+        if(!Array.isArray(scene.objects)) scene.objects=[];
+        if(scene.foregroundWidth==null) scene.foregroundWidth=40;
+        if(scene.foregroundHeight==null) scene.foregroundHeight=30;
+        if(scene.foregroundFit==null) scene.foregroundFit=true;
+        if(scene.alignWithGrid==null) scene.alignWithGrid=true;
+    });
+    sharedObjects.forEach(object=>{
+        if(typeof object.visible!=="boolean") object.visible=true;
+        if(typeof object.locked!=="boolean") object.locked=false;
+    });
+    return true;
+}
+
+function setAutosaveStatus(textValue,isSaved=false){
+    if(!autosaveStatus)return;
+    autosaveStatus.textContent=textValue;
+    autosaveStatus.style.color=isSaved?"#7bd99a":"#718097";
+}
+
+function openAutosaveDB(){
+    return new Promise((resolve,reject)=>{
+        if(!("indexedDB" in window)){reject(new Error("瀏覽器不支援 IndexedDB"));return;}
+        const request=indexedDB.open(AUTOSAVE_DB_NAME,1);
+        request.onupgradeneeded=function(){
+            const db=request.result;
+            if(!db.objectStoreNames.contains(AUTOSAVE_STORE_NAME))db.createObjectStore(AUTOSAVE_STORE_NAME);
+        };
+        request.onsuccess=()=>resolve(request.result);
+        request.onerror=()=>reject(request.error||new Error("自動儲存資料庫開啟失敗"));
+    });
+}
+
+async function saveEditorStateToStorage(){
+    if(autosaveBusy||!scenes.length)return;
+    autosaveBusy=true;
+    setAutosaveStatus("自動儲存：儲存中…");
+    const payload=buildPersistedState();
+    try{
+        const db=await openAutosaveDB();
+        await new Promise((resolve,reject)=>{
+            const transaction=db.transaction(AUTOSAVE_STORE_NAME,"readwrite");
+            transaction.objectStore(AUTOSAVE_STORE_NAME).put(payload,AUTOSAVE_KEY);
+            transaction.oncomplete=resolve;
+            transaction.onerror=()=>reject(transaction.error||new Error("IndexedDB 儲存失敗"));
+            transaction.onabort=()=>reject(transaction.error||new Error("IndexedDB 儲存中止"));
+        });
+        db.close();
+        setAutosaveStatus("自動儲存：已儲存",true);
+    }catch(error){
+        console.warn("IndexedDB 自動儲存失敗，改用 localStorage：",error);
+        try{
+            localStorage.setItem(AUTOSAVE_DB_NAME+"_"+AUTOSAVE_KEY,JSON.stringify(payload));
+            setAutosaveStatus("自動儲存：已儲存",true);
+        }catch(fallbackError){
+            console.error("自動儲存失敗：",fallbackError);
+            setAutosaveStatus("自動儲存：空間不足");
+        }
+    }finally{autosaveBusy=false;}
+}
+
+async function loadEditorStateFromStorage(){
+    try{
+        const db=await openAutosaveDB();
+        const saved=await new Promise((resolve,reject)=>{
+            const transaction=db.transaction(AUTOSAVE_STORE_NAME,"readonly");
+            const request=transaction.objectStore(AUTOSAVE_STORE_NAME).get(AUTOSAVE_KEY);
+            request.onsuccess=()=>resolve(request.result||null);
+            request.onerror=()=>reject(request.error||new Error("讀取自動儲存失敗"));
+        });
+        db.close();
+        if(saved&&applyPersistedState(saved))return true;
+    }catch(error){console.warn("IndexedDB 讀取失敗：",error);}
+    try{
+        const raw=localStorage.getItem(AUTOSAVE_DB_NAME+"_"+AUTOSAVE_KEY);
+        if(raw)return applyPersistedState(JSON.parse(raw));
+    }catch(error){console.warn("localStorage 自動儲存讀取失敗：",error);}
+    return false;
+}
+
+setInterval(saveEditorStateToStorage,AUTOSAVE_INTERVAL);
+
+document.addEventListener("keydown",function(e){
+    const isUndoShortcut=(e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="z"&&!e.altKey;
+    if(!isUndoShortcut)return;
+    e.preventDefault();
+    undoLastAction();
+});
+
+if(undoButton)undoButton.addEventListener("click",undoLastAction);
 
 
 /* ==========================================
@@ -2038,6 +2290,7 @@ backgroundImageInput.addEventListener(
 
 
             updateDropHint();
+            render();
 
 
         } catch (error) {
@@ -2103,6 +2356,7 @@ foreground.src =
 updateForegroundStyle();
 
 updateDropHint();
+            render();
 
 
         } catch (error) {
@@ -2180,6 +2434,7 @@ document.getElementById("clearBackground")
 
     // 更新提示文字
     updateDropHint();
+    render();
 
 });
 
@@ -2203,6 +2458,7 @@ document.getElementById("clearForeground")
 
     // 更新提示文字
     updateDropHint();
+    render();
 
 });
 
@@ -2731,6 +2987,8 @@ if (object.locked === true) {
     return;
 }
 
+
+    beginHistoryAction();
 
     resizing = true;
 
@@ -3356,6 +3614,8 @@ function stopResize(e) {
     resizeObject = null;
 
     resizeHandle = null;
+
+    finishHistoryAction();
 
 }
 
@@ -4267,7 +4527,10 @@ function updateList() {
     } else {
         markers.forEach(object => markerObjectList.appendChild(buildObjectItem(object, false)));
     }
+
+    recordHistoryAfterRender();
 }
+
 
 /* ==========================================
    updateSelectionVisual
@@ -4585,8 +4848,33 @@ document.getElementById("angleInput")
    旋轉角度：滑桿
 ========================================== */
 
-document.getElementById("angleRange")
-.addEventListener("input", function() {
+const angleRange = document.getElementById("angleRange");
+const opacityInput = document.getElementById("opacityInput");
+
+/*
+ * 滑桿的每一次 input 都只是同一次拖曳中的即時預覽。
+ * 只有放開滑鼠 / 手指後，才把整段拖曳記成「一步」。
+ */
+function finishSliderHistoryAction() {
+    if (historyActionActive) {
+        finishHistoryAction();
+    }
+}
+
+angleRange.addEventListener("pointerdown", function() {
+    beginHistoryAction();
+});
+
+angleRange.addEventListener("pointerup", finishSliderHistoryAction);
+angleRange.addEventListener("pointercancel", finishSliderHistoryAction);
+angleRange.addEventListener("change", function() {
+    if (!historyActionActive) {
+        beginHistoryAction();
+        finishHistoryAction();
+    }
+});
+
+angleRange.addEventListener("input", function() {
 
     const object = getSelectedObject();
 
@@ -4610,8 +4898,20 @@ document.getElementById("angleRange")
 });
 
 
-document.getElementById("opacityInput")
-.addEventListener("input", function() {
+opacityInput.addEventListener("pointerdown", function() {
+    beginHistoryAction();
+});
+
+opacityInput.addEventListener("pointerup", finishSliderHistoryAction);
+opacityInput.addEventListener("pointercancel", finishSliderHistoryAction);
+opacityInput.addEventListener("change", function() {
+    if (!historyActionActive) {
+        beginHistoryAction();
+        finishHistoryAction();
+    }
+});
+
+opacityInput.addEventListener("input", function() {
 
     const object = getSelectedObject();
 
@@ -4759,6 +5059,8 @@ if (object.locked === true) {
     return;
 }
 
+
+    beginHistoryAction();
 
     dragging = true;
 
@@ -4910,6 +5212,8 @@ function stopDrag(e) {
 
     dragging = false;
     dragObject = null;
+
+    finishHistoryAction();
 }
 
 
@@ -6404,23 +6708,30 @@ function loadImage(src) {
    初始化
 ========================================== */
 
-if (scenes.length === 0) {
+async function initializeEditor() {
 
-    const firstScene =
-        createScene("場景 1");
+    const restored = await loadEditorStateFromStorage();
 
-    scenes.push(firstScene);
+    if (!restored && scenes.length === 0) {
+        const firstScene = createScene("場景 1");
+        scenes.push(firstScene);
+        currentSceneId = firstScene.id;
+    }
 
-    currentSceneId =
-        firstScene.id;
+    if (!scenes.some(scene => scene.id === currentSceneId)) {
+        currentSceneId = scenes.length ? scenes[0].id : null;
+    }
 
+    renderSceneList();
+    loadCurrentScene();
+    render();
+    resetHistoryBaseline();
+
+    if (restored) setAutosaveStatus("自動儲存：已恢復",true);
+    else setAutosaveStatus("自動儲存：待機");
 }
 
-renderSceneList();
-
-loadCurrentScene();
-
-render();
+initializeEditor();
 
 /* =========================================================
    VIEWPORT
