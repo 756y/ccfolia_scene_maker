@@ -262,8 +262,9 @@ button.full{width:100%}
     background-position:0 0,0 16px,16px -16px,-16px 0;
 }
 #workspace::before{content:"工作區";position:absolute;top:14px;left:16px;color:#526176;font-size:10px;letter-spacing:1px;pointer-events:none;z-index:2}\n#workspace{cursor:grab}\n#workspace.is-panning{cursor:grabbing}\n#workspace .scene-object{cursor:move}
+#bottomToolbarDock{position:absolute;right:16px;bottom:30px;z-index:1000;display:flex;align-items:center;gap:10px;max-width:calc(100% - 32px)}
 #viewportControls{
-    position:absolute;right:16px;bottom:16px;z-index:1000;
+    position:relative;right:auto;bottom:auto;z-index:1000;
     display:flex;align-items:center;gap:5px;padding:6px;
     background:rgba(17,24,34,.94);border:1px solid #344258;border-radius:10px;box-shadow:var(--shadow);backdrop-filter:blur(8px)
 }
@@ -277,7 +278,11 @@ button.full{width:100%}
 #workspace.multi-select-active .scene-object{cursor:crosshair}
 #undoButton{min-width:34px;font-size:15px}
 #undoButton:disabled{opacity:.42;cursor:not-allowed;background:#1a2432;border-color:#2b3749}
-#autosaveStatus{font-size:9px;color:#718097;min-width:72px;text-align:center}
+#autosaveStatus{position:absolute;right:18px;bottom:7px;z-index:1001;font-size:10px;color:#718097;min-width:0;text-align:right;pointer-events:none;white-space:nowrap;max-width:calc(100% - 36px)}
+#objectQuickToolbar{position:relative!important;left:auto!important;top:auto!important;bottom:auto!important;right:auto!important;transform:none!important;gap:5px;padding:6px;flex:0 0 auto;align-self:center}
+#objectQuickToolbar button{width:42px;height:42px;min-height:42px;flex:0 0 42px;font-size:20px}
+#objectQuickToolbar .quick-divider{height:30px}
+@media(max-width:1100px){#bottomToolbarDock{gap:6px;right:8px;bottom:30px;max-width:calc(100% - 16px)}#objectQuickToolbar{gap:1px;padding:4px}#objectQuickToolbar button{width:34px;height:36px;min-height:36px;flex-basis:34px;font-size:17px}#viewportControls{gap:3px;padding:4px}#viewportControls button{padding:0 6px}#zoomSlider{max-width:65px!important}}
 #zoomValue{min-width:50px;text-align:center;font-size:11px;color:#c4cfdd}
 
 #background{
@@ -319,14 +324,18 @@ button.full{width:100%}
     background:rgba(15,22,32,.96);border:1px solid #405068;border-radius:9px;
     box-shadow:0 8px 22px rgba(0,0,0,.4);z-index:1000;pointer-events:auto;white-space:nowrap;backdrop-filter:blur(8px)
 }
-#objectQuickToolbar button{width:31px;height:31px;min-height:31px;padding:0;display:flex;align-items:center;justify-content:center;background:#222e3e;color:#dce6f3;border:1px solid #3a4b62;border-radius:6px;font-size:14px;line-height:1}
-#objectQuickToolbar button:hover{background:#30425a;border-color:#55708f}
-#objectQuickToolbar button:active{background:#3b5270}
+#objectQuickToolbar button{width:36px;height:36px;min-height:36px;padding:0;display:flex;align-items:center;justify-content:center;background:transparent;color:#dce6f3;border:1px solid transparent;border-radius:0;font-size:17px;line-height:1;flex:0 0 36px}
+#objectQuickToolbar button:hover{background:rgba(92,125,165,.22);border-color:transparent;border-radius:5px}
+#objectQuickToolbar button:active{background:rgba(92,125,165,.36)}
 #objectQuickToolbar button.quick-delete{color:#ff7f88}
-#objectQuickToolbar button.quick-delete:hover{background:#632e36;color:white;border-color:#8d434d}
-.quick-divider{width:1px;height:22px;background:#3c4b60;margin:0 2px}
+#objectQuickToolbar button.quick-delete:hover{background:rgba(180,55,68,.28);color:white;border-color:transparent;border-radius:5px}
+.quick-divider{width:1px;height:27px;background:#3c4b60;margin:0 2px}
 #objectQuickToolbar button{position:relative}
 #objectQuickToolbar button:hover::after{content:attr(title);position:absolute;left:50%;bottom:calc(100% + 7px);transform:translateX(-50%);padding:4px 7px;background:#0c121a;color:#fff;border:1px solid #3d4b5e;border-radius:5px;font-size:10px;white-space:nowrap;pointer-events:none;z-index:2000;box-shadow:0 5px 15px rgba(0,0,0,.3)}
+/* 工具列位於底部控制列同一個 flex dock，不能沿用舊版的 absolute 定位。 */
+#bottomToolbarDock #objectQuickToolbar{position:relative!important;inset:auto!important;transform:none!important;display:none;order:0;visibility:visible;opacity:1;pointer-events:auto}
+#bottomToolbarDock #viewportControls{order:1;flex:0 0 auto}
+#autosaveStatus{font-size:11px}
 #dropHint{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);color:#536176;pointer-events:none;text-align:center;font-size:13px}
 
 @media(max-width:900px){
@@ -499,6 +508,9 @@ button.full{width:100%}
       <div class="control checkbox-row"><label for="foregroundFitInput">圖片符合前景尺寸</label><input id="foregroundFitInput" type="checkbox" checked></div>
       <div class="control checkbox-row"><label for="alignWithGridInput">拖曳時自動吸附格線</label><input id="alignWithGridInput" type="checkbox" checked></div>
       <div class="control checkbox-row"><label for="showGridInput">顯示格線</label><input id="showGridInput" type="checkbox" checked></div>
+      <h3>圖片浮動工具列顯示項目</h3>
+      <p style="font-size:11px;color:#8e9bae;margin:-4px 0 10px">取消勾選只會隱藏工具列圖示，不會停用該功能。預設全部顯示。</p>
+      <div id="quickToolbarSettings" class="two-col"></div>
     </div>
     <div class="settings-footer"><button id="closeSettingsBottom" type="button">完成</button></div>
   </section>
@@ -506,12 +518,12 @@ button.full{width:100%}
 
 <div id="workspace">
 
+    <div id="bottomToolbarDock">
     <div id="viewportControls">
 
         <button id="undoButton" title="返回上一步（Ctrl+Z）" disabled>↶</button>
         <button id="redoButton" title="重做下一步（Ctrl+Y）" disabled>↷</button>
         <button id="multiSelectButton" title="多選元件：可選取並一起移動未鎖定的元件">▧+</button>
-        <span id="autosaveStatus" title="每 10 秒自動儲存">自動儲存：待機</span>
 
         <input id="zoomSlider" type="range" min="10" max="200" step="1" value="100" aria-label="畫布縮放" title="拖曳調整畫布縮放" style="width:92px;height:5px;accent-color:var(--accent);cursor:pointer;margin:0 3px">
 
@@ -522,6 +534,8 @@ button.full{width:100%}
         <button id="resetView">100%</button>
 
     </div>
+    </div>
+    <span id="autosaveStatus" title="最新自動儲存時間">尚未儲存</span>
 
     <!-- 背景：獨立於無邊界畫布，填滿整個工作區並模糊顯示 -->
     <img id="background">
@@ -543,7 +557,7 @@ button.full{width:100%}
     
     <!-- =====================================================
      選取物件浮動快捷工具列
-     JavaScript 會在選取圖片後自動定位
+     JavaScript 會在選取圖片後顯示，固定於畫布底部控制列左側
 ===================================================== -->
 
 <div id="objectQuickToolbar" style="display:none;">
@@ -888,8 +902,17 @@ function applyPersistedState(saved) {
 
 function setAutosaveStatus(textValue,isSaved=false){
     if(!autosaveStatus)return;
-    autosaveStatus.textContent=textValue;
-    autosaveStatus.style.color=isSaved?"#7bd99a":"#718097";
+    const now = new Date();
+    const time = now.toLocaleTimeString("zh-TW", {hour12:false, hour:"2-digit", minute:"2-digit", second:"2-digit"});
+    if (isSaved) {
+        autosaveStatus.textContent = "自動儲存，最後儲存時間：" + time;
+        autosaveStatus.title = "自動儲存，最後儲存時間：" + now.toLocaleString("zh-TW", {hour12:false});
+        autosaveStatus.style.color = "#7bd99a";
+    } else {
+        autosaveStatus.textContent = textValue.includes("空間不足") ? "儲存失敗" : (textValue.includes("儲存中") ? "儲存中…" : (textValue.includes("待機") ? "尚未儲存" : textValue));
+        autosaveStatus.title = textValue;
+        autosaveStatus.style.color = "#718097";
+    }
 }
 
 function openAutosaveDB(){
@@ -3861,6 +3884,55 @@ const objectQuickToolbar =
     document.getElementById(
         "objectQuickToolbar"
     );
+const bottomToolbarDock = document.getElementById("bottomToolbarDock");
+const workspaceForToolbars = document.getElementById("workspace");
+// 工具列放在工作區底部控制列旁；儲存時間則獨立放在工作區最底部，不屬於任何工具列。
+if (bottomToolbarDock && objectQuickToolbar) bottomToolbarDock.insertBefore(objectQuickToolbar, document.getElementById("viewportControls"));
+if (workspaceForToolbars && autosaveStatus) workspaceForToolbars.appendChild(autosaveStatus);
+
+const quickToolbarActions = [
+    ["flipX", "水平鏡像"], ["flipY", "垂直鏡像"],
+    ["replaceImage", "更換圖片"], ["toggleVisible", "顯示／隱藏"],
+    ["toggleLocked", "鎖定／解鎖"], ["moveTop", "移到最上層"],
+    ["moveUp", "上移一層"], ["moveDown", "下移一層"],
+    ["moveBottom", "移到最下層"], ["duplicate", "複製物件"],
+    ["delete", "刪除物件"]
+];
+const quickToolbarSettings = document.getElementById("quickToolbarSettings");
+const QUICK_TOOLBAR_PREF_KEY = "cocofolia_quick_toolbar_visibility_v1";
+let quickToolbarVisibility = {};
+try { quickToolbarVisibility = JSON.parse(localStorage.getItem(QUICK_TOOLBAR_PREF_KEY) || "{}"); } catch (e) { quickToolbarVisibility = {}; }
+quickToolbarActions.forEach(([action, label]) => {
+    const row = document.createElement("div");
+    row.className = "control checkbox-row";
+    const text = document.createElement("label");
+    text.htmlFor = "quickToolbarPref_" + action;
+    text.textContent = label;
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.id = "quickToolbarPref_" + action;
+    checkbox.checked = quickToolbarVisibility[action] !== false;
+    checkbox.addEventListener("change", () => {
+        quickToolbarVisibility[action] = checkbox.checked;
+        try { localStorage.setItem(QUICK_TOOLBAR_PREF_KEY, JSON.stringify(quickToolbarVisibility)); } catch (e) {}
+        applyQuickToolbarVisibility();
+    });
+    row.append(text, checkbox);
+    quickToolbarSettings.appendChild(row);
+});
+function applyQuickToolbarVisibility() {
+    if (!objectQuickToolbar) return;
+    objectQuickToolbar.querySelectorAll("[data-quick-action]").forEach(button => {
+        const action = button.dataset.quickAction;
+        button.style.display = quickToolbarVisibility[action] === false ? "none" : "flex";
+    });
+    objectQuickToolbar.querySelectorAll(".quick-divider").forEach(divider => {
+        const prev = divider.previousElementSibling;
+        const next = divider.nextElementSibling;
+        divider.style.display = prev && next && prev.style.display !== "none" && next.style.display !== "none" ? "block" : "none";
+    });
+}
+
 
 
 /*
@@ -3998,65 +4070,15 @@ if (lockButton) {
        顯示工具列
     ========================================== */
 
-    objectQuickToolbar.style.display =
-        "flex";
-
-
-    /* ==========================================
-       工具列位置
-    ========================================== */
-
-    let left =
-        object.x +
-        object.width / 2;
-
-    let top =
-        object.y - 8;
-
-
-    if (top < 50) {
-
-        top =
-            object.y +
-            object.height +
-            8;
-
-        objectQuickToolbar.style.transform =
-            "translateX(-50%)";
-
-    } else {
-
-        objectQuickToolbar.style.transform =
-            "translate(-50%, -100%)";
-
-    }
-
-
-    /* ==========================================
-       防止工具列超出 Scene 左右
-    ========================================== */
-
-    const toolbarWidth =
-        objectQuickToolbar.offsetWidth || 220;
-
-    const halfWidth =
-        toolbarWidth / 2;
-
-    left =
-        Math.max(
-            halfWidth + 6,
-            Math.min(
-                1920 - halfWidth - 6,
-                left
-            )
-        );
-
-
-    objectQuickToolbar.style.left =
-        left + "px";
-
-    objectQuickToolbar.style.top =
-        top + "px";
+    applyQuickToolbarVisibility();
+    // 固定顯示在「上一步」左側的底部工具區，只有選取圖片時才顯示。
+    objectQuickToolbar.style.display = "flex";
+    objectQuickToolbar.style.position = "relative";
+    objectQuickToolbar.style.left = "auto";
+    objectQuickToolbar.style.top = "auto";
+    objectQuickToolbar.style.right = "auto";
+    objectQuickToolbar.style.bottom = "auto";
+    objectQuickToolbar.style.transform = "none";
 
 }
 
@@ -4793,6 +4815,10 @@ function updateSelectionVisual() {
 
         });
 
+    if (typeof updateObjectQuickToolbar === "function") updateObjectQuickToolbar();
+
+    // 同步縮放控制點與目前選取狀態；取消選取時立即移除殘留的八個控制點。
+    if (typeof renderResizeHandles === "function") renderResizeHandles();
 }
 
 
@@ -4890,6 +4916,7 @@ document.getElementById("angleValue").textContent =
 
 updateList();
 
+// 選取圖片後立即同步底部左側的快捷工具列顯示狀態。
 updateObjectQuickToolbar();
 
 renderResizeHandles();
@@ -5325,6 +5352,7 @@ let dragStartY = 0;
 let objectStartX = 0;
 
 let objectStartY = 0;
+let dragAxisLock = null;
 
 
 /* ==========================================
@@ -5384,6 +5412,7 @@ function startDrag(e) {
     dragStartX = e.clientX;
 
     dragStartY = e.clientY;
+    dragAxisLock = e.shiftKey ? "pending" : null;
 
 
     objectStartX = object.x;
@@ -5443,14 +5472,25 @@ document.addEventListener(
          * 因為 Scene 可能有縮放，
          * 所以要除以 viewScale。
          */
-        const dx =
+        let dx =
             (e.clientX - dragStartX) /
             viewScale;
 
-        const dy =
+        let dy =
             (e.clientY - dragStartY) /
             viewScale;
 
+        // 拖曳時按住 Shift：依最初移動方向鎖定水平或垂直軸。
+        if (e.shiftKey) {
+            if (dragAxisLock === null) dragAxisLock = "pending";
+            if (dragAxisLock === "pending" && (Math.abs(dx) > 2 || Math.abs(dy) > 2)) {
+                dragAxisLock = Math.abs(dx) >= Math.abs(dy) ? "horizontal" : "vertical";
+            }
+            if (dragAxisLock === "horizontal") dy = 0;
+            else if (dragAxisLock === "vertical") dx = 0;
+        } else {
+            dragAxisLock = null;
+        }
 
         dragGroup.forEach(item => {
             const start = dragGroupStarts.find(entry => entry.id === item.id);
@@ -5466,6 +5506,18 @@ document.addEventListener(
          */
         if (getCurrentScene()?.alignWithGrid === true) {
             dragGroup.forEach(item => snapObjectToGrid(item));
+        }
+        // 吸附格線後再次鎖定另一軸，確保 Shift 模式不會產生軸向漂移。
+        if (dragAxisLock === "horizontal") {
+            dragGroup.forEach(item => {
+                const start = dragGroupStarts.find(entry => entry.id === item.id);
+                if (start) item.y = start.y;
+            });
+        } else if (dragAxisLock === "vertical") {
+            dragGroup.forEach(item => {
+                const start = dragGroupStarts.find(entry => entry.id === item.id);
+                if (start) item.x = start.x;
+            });
         }
         
         /* 即時更新右側 X / Y */
@@ -5516,6 +5568,7 @@ function stopDrag(e) {
     dragObject = null;
     dragGroup = [];
     dragGroupStarts = [];
+    dragAxisLock = null;
 
     finishHistoryAction();
 }
@@ -5554,11 +5607,17 @@ document.getElementById("scene")
 
     if (
         e.target === this ||
+        e.target === sceneCanvas ||
+        e.target === objectsContainer ||
         e.target === background ||
-        e.target === foreground
+        e.target === foreground ||
+        e.target === sceneGrid
     ) {
 
         selectedId = null;
+        if (selectedIds && typeof selectedIds.clear === "function") {
+            selectedIds.clear();
+        }
 
         editor.style.display = "none";
 
@@ -7473,6 +7532,20 @@ document.getElementById("workspace").addEventListener(
         if(!isWorkspaceBlank && !isSceneBlank) return;
 
         if(e.pointerType === "mouse" && e.button !== 0) return;
+
+        // 一般模式下，點擊／開始拖動畫布的空白處就立即取消圖片選取。
+        // 在 pointerdown 處理，避免工作區的 pointer capture 令後續 click
+        // 無法觸發 scene 上原有的空白處取消選取事件。
+        if (!multiSelectMode) {
+            selectedId = null;
+            selectedIds.clear();
+            editor.style.display = "none";
+            const selectedPreview = document.getElementById("selectedObjectPreview");
+            if (selectedPreview) selectedPreview.removeAttribute("src");
+            noSelection.style.display = "block";
+            updateSelectionVisual();
+            updateList();
+        }
 
         viewDragging = true;
 
