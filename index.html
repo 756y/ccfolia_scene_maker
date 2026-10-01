@@ -214,14 +214,23 @@ button.full{width:100%}
 .checkbox-row input[type=checkbox]{flex:0 0 auto;margin:0 0 0 10px}
 
 /* 場景 */
-#sceneList{border:1px solid var(--border-soft);background:#111923;border-radius:8px;overflow-y:auto;max-height:190px;margin-bottom:8px}
+#sceneList{border:1px solid var(--border-soft);background:#111923;border-radius:8px;overflow-y:auto;max-height:260px;min-height:90px;margin-bottom:8px;overscroll-behavior:contain;scrollbar-gutter:stable;touch-action:pan-y}
 .scene-list-item{
     display:flex;align-items:center;gap:8px;min-height:54px;padding:6px 8px;
-    border-bottom:1px solid #253143;cursor:pointer;transition:.12s;
+    position:relative;border-bottom:1px solid #253143;cursor:pointer;transition:transform .16s ease,box-shadow .16s ease,background .16s ease,opacity .16s ease;touch-action:pan-y;user-select:none;-webkit-user-select:none;
 }
 .scene-list-item:last-child{border-bottom:0}
 .scene-list-item:hover{background:#1c2838}
 .scene-list-item.selected{background:linear-gradient(90deg,rgba(77,156,255,.2),rgba(77,156,255,.05));box-shadow:inset 3px 0 0 var(--accent)}
+.scene-list-item.drag-ready{position:relative;z-index:3;transform:translateY(-2px) scale(1.015);background:#24364d;box-shadow:0 5px 16px rgba(0,0,0,.42),0 0 0 1px var(--accent);border-radius:8px}
+.scene-list-item.dragging{position:relative;z-index:4;opacity:.96;transform:scale(1.025);background:#2a3c53;box-shadow:0 10px 24px rgba(0,0,0,.5),0 0 0 2px var(--accent);border-radius:8px;cursor:grabbing}
+.scene-list-item.drop-before::before,.scene-list-item.drop-after::after{content:"";position:absolute;left:5px;right:5px;height:4px;background:#55b7ff;border-radius:4px;box-shadow:0 0 0 1px rgba(85,183,255,.35),0 0 12px rgba(85,183,255,.95);z-index:8;pointer-events:none}
+.scene-list-item.drop-before::before{top:-2px}
+.scene-list-item.drop-after::after{bottom:-2px}
+.scene-drag-handle{width:22px;height:34px;flex:0 0 22px;display:grid;grid-template-columns:repeat(2,3px);grid-template-rows:repeat(3,3px);align-content:center;justify-content:center;gap:3px;border-radius:6px;color:#8493a8;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}
+.scene-drag-handle span{width:3px;height:3px;border-radius:50%;background:currentColor}
+.scene-drag-handle:hover{background:#263448;color:#dce7f6}
+.scene-drag-handle:active{cursor:grabbing}
 .scene-number{width:24px;height:24px;flex:0 0 24px;display:flex;align-items:center;justify-content:center;border-radius:7px;background:#253248;color:#aab9cc;font-size:11px;font-weight:700}
 .scene-list-item.selected .scene-number{background:#2d72c8;color:white}
 .scene-item-thumb{width:38px;height:38px;flex-basis:38px}
@@ -410,7 +419,6 @@ button.full{width:100%}
                 <button id="addScene" class="primary">＋ 新增場景</button>
                 <button id="deleteScene" class="danger">刪除場景</button>
             </div>
-
             <div id="sceneEditor">
                 <div class="control">
                     <label>場景名稱</label>
@@ -448,6 +456,9 @@ button.full{width:100%}
                 <button id="exportPNG" class="export-button">▧ PNG</button>
             </div>
             <div id="zipStatus">尚未輸出 Room ZIP</div>
+            <div class="row" style="margin-top:12px">
+                <button id="initializeEditor" class="danger full">↻ 初始化編輯器</button>
+            </div>
         </div>
     </section>
 
@@ -982,20 +993,37 @@ objects: []
 
 
 function addScene() {
+    const sourceScene = getCurrentScene();
+    let scene;
 
-    const scene = createScene(
-        "場景 " + (scenes.length + 1)
-    );
+    if (sourceScene) {
+        // 新場景複製目前場景的背景、前景設定與場景標誌；圖片資料沿用，物件 ID 則重新產生。
+        scene = {
+            ...sourceScene,
+            id: createId(),
+            name: "新場景",
+            objects: Array.isArray(sourceScene.objects)
+                ? sourceScene.objects.map(object => ({ ...object, id: createId() }))
+                : []
+        };
+    } else {
+        scene = createScene("新場景");
+    }
 
-    scenes.push(scene);
+    const currentIndex = scenes.findIndex(item => item.id === currentSceneId);
+    if (currentIndex === -1) {
+        scenes.push(scene);
+    } else {
+        scenes.splice(currentIndex + 1, 0, scene);
+    }
 
     currentSceneId = scene.id;
-
     selectedId = null;
-
     renderSceneList();
     loadCurrentScene();
-
+    render();
+    recordHistoryAfterRender();
+    saveEditorStateToStorage();
 }
 
 document.getElementById("sceneNameInput")
@@ -1193,10 +1221,19 @@ function renderSceneList() {
     scenes.forEach((scene, index) => {
         const div = document.createElement("div");
         div.className = "scene-list-item";
+        div.draggable = false;
+        div.dataset.sceneId = scene.id;
 
         if (scene.id === currentSceneId) {
             div.classList.add("selected");
         }
+
+        const dragHandle = document.createElement("span");
+        dragHandle.className = "scene-drag-handle";
+        dragHandle.setAttribute("role", "button");
+        dragHandle.setAttribute("aria-label", "拖曳調整場景順序");
+        dragHandle.title = "按住此處上下拖曳排序";
+        for (let dot = 0; dot < 6; dot++) dragHandle.appendChild(document.createElement("span"));
 
         const number = document.createElement("span");
         number.className = "scene-number";
@@ -1205,7 +1242,14 @@ function renderSceneList() {
         const thumb = document.createElement("img");
         thumb.className = "scene-item-thumb";
         thumb.alt = "";
-        thumb.src = scene.backgroundData || (scene.objects[0] && scene.objects[0].imageUrl) || "";
+        if (scene.foregroundData) {
+            thumb.src = scene.foregroundData;
+            thumb.style.visibility = "visible";
+        } else {
+            // 沒有前景圖時保留縮圖位置，但顯示空白，不以其他圖片替代。
+            thumb.removeAttribute("src");
+            thumb.style.visibility = "hidden";
+        }
 
         const info = document.createElement("div");
         info.className = "scene-item-info";
@@ -1216,15 +1260,114 @@ function renderSceneList() {
 
         const meta = document.createElement("span");
         meta.className = "scene-item-meta";
-        meta.textContent = `${scene.objects.length} 個場景標誌${scene.backgroundData ? " · 有背景" : ""}`;
+        meta.textContent = `${scene.objects.length} 個場景標誌${scene.foregroundData ? " · 有前景" : scene.backgroundData ? " · 有背景" : ""}`;
 
         info.appendChild(name);
         info.appendChild(meta);
         div.appendChild(number);
         div.appendChild(thumb);
         div.appendChild(info);
+        div.appendChild(dragHandle);
+
+        // 只有按住每列最右側的六點拖曳把手才會排序；其餘列區域維持一般點選／滑動。
+        let sceneDragging = false;
+        let dragPointerId = null;
+        let lastPointerX = 0;
+        let lastPointerY = 0;
+        let autoScrollTimer = null;
+        let suppressSceneClick = false;
+
+        function clearSceneDragState() {
+            if (autoScrollTimer !== null) clearInterval(autoScrollTimer);
+            autoScrollTimer = null;
+            sceneDragging = false;
+            dragPointerId = null;
+            div.classList.remove("drag-ready", "dragging");
+            list.querySelectorAll(".drop-before, .drop-after").forEach(item => item.classList.remove("drop-before", "drop-after"));
+        }
+
+        function findDropTarget(x, y) {
+            let target = document.elementFromPoint(x, y)?.closest(".scene-list-item");
+            if (target && list.contains(target)) return target;
+            const rect = list.getBoundingClientRect();
+            const items = Array.from(list.querySelectorAll(".scene-list-item"));
+            if (y < rect.top) return items[0] || null;
+            if (y > rect.bottom) return items[items.length - 1] || null;
+            return null;
+        }
+
+        function updateSceneDrag() {
+            if (!sceneDragging) return;
+            const rect = list.getBoundingClientRect();
+            const edge = 42;
+            if (lastPointerY < rect.top + edge) list.scrollTop -= Math.max(4, Math.ceil((rect.top + edge - lastPointerY) / 4));
+            else if (lastPointerY > rect.bottom - edge) list.scrollTop += Math.max(4, Math.ceil((lastPointerY - (rect.bottom - edge)) / 4));
+            list.querySelectorAll(".drop-before, .drop-after").forEach(item => item.classList.remove("drop-before", "drop-after"));
+            const target = findDropTarget(lastPointerX, lastPointerY);
+            if (target && target !== div) {
+                const targetRect = target.getBoundingClientRect();
+                if (lastPointerY < targetRect.top + targetRect.height / 2) target.classList.add("drop-before");
+                else target.classList.add("drop-after");
+            }
+        }
+
+        dragHandle.addEventListener("pointerdown", function(e) {
+            if (e.button !== undefined && e.button !== 0) return;
+            e.preventDefault();
+            e.stopPropagation();
+            dragPointerId = e.pointerId;
+            lastPointerX = e.clientX;
+            lastPointerY = e.clientY;
+            sceneDragging = true;
+            suppressSceneClick = true;
+            div.classList.add("dragging");
+            try { dragHandle.setPointerCapture(e.pointerId); } catch (_) {}
+            autoScrollTimer = setInterval(updateSceneDrag, 35);
+            updateSceneDrag();
+        });
+
+        dragHandle.addEventListener("pointermove", function(e) {
+            if (!sceneDragging || dragPointerId !== e.pointerId) return;
+            e.preventDefault();
+            lastPointerX = e.clientX;
+            lastPointerY = e.clientY;
+            updateSceneDrag();
+        });
+
+        function finishScenePointerDrag(e) {
+            if (!sceneDragging || dragPointerId !== e.pointerId) return;
+            lastPointerX = e.clientX;
+            lastPointerY = e.clientY;
+            const target = findDropTarget(lastPointerX, lastPointerY);
+            if (target && target !== div) {
+                const targetId = target.dataset.sceneId;
+                const fromIndex = scenes.findIndex(item => item.id === scene.id);
+                const targetIndex = scenes.findIndex(item => item.id === targetId);
+                if (fromIndex !== -1 && targetIndex !== -1) {
+                    const [movedScene] = scenes.splice(fromIndex, 1);
+                    const targetRect = target.getBoundingClientRect();
+                    let insertIndex = scenes.findIndex(item => item.id === targetId);
+                    if (lastPointerY >= targetRect.top + targetRect.height / 2) insertIndex += 1;
+                    scenes.splice(insertIndex, 0, movedScene);
+                }
+            }
+            clearSceneDragState();
+            renderSceneList();
+            recordHistoryAfterRender();
+            saveEditorStateToStorage();
+        }
+
+        dragHandle.addEventListener("pointerup", finishScenePointerDrag);
+        dragHandle.addEventListener("pointercancel", clearSceneDragState);
+        dragHandle.addEventListener("lostpointercapture", function() {
+            if (sceneDragging) clearSceneDragState();
+        });
 
         div.onclick = function() {
+            if (suppressSceneClick) {
+                suppressSceneClick = false;
+                return;
+            }
             switchScene(scene.id);
         };
 
@@ -2293,7 +2436,9 @@ backgroundImageInput.addEventListener(
 
             updateDropHint();
             render();
-
+            renderSceneList();
+            recordHistoryAfterRender();
+            saveEditorStateToStorage();
 
         } catch (error) {
 
@@ -2359,7 +2504,9 @@ updateForegroundStyle();
 
 updateDropHint();
             render();
-
+            renderSceneList();
+            recordHistoryAfterRender();
+            saveEditorStateToStorage();
 
         } catch (error) {
 
@@ -2437,6 +2584,9 @@ document.getElementById("clearBackground")
     // 更新提示文字
     updateDropHint();
     render();
+    renderSceneList();
+    recordHistoryAfterRender();
+    saveEditorStateToStorage();
 
 });
 
@@ -2461,6 +2611,9 @@ document.getElementById("clearForeground")
     // 更新提示文字
     updateDropHint();
     render();
+    renderSceneList();
+    recordHistoryAfterRender();
+    saveEditorStateToStorage();
 
 });
 
@@ -4695,6 +4848,14 @@ document
     );
 
 
+document
+    .getElementById("initializeEditor")
+    .addEventListener(
+        "click",
+        initializeEditorToBlank
+    );
+
+
 /* ==========================================
    編輯欄位
 ========================================== */
@@ -5780,6 +5941,9 @@ function createStoredZip(entries){
 
 async function buildSceneRoom() {
 
+    // 匯出開始時固定目前畫面上的場景順序，避免 ZIP 建立期間順序來源不一致。
+    const exportScenes = scenes.slice();
+
     const resources = {};
 
     const imageFiles = new Map();
@@ -5856,8 +6020,8 @@ async function addImage(dataURL) {
         foregroundUrl: null,
 
         sceneId:
-            scenes.length > 0
-                ? scenes[0].id
+            exportScenes.length > 0
+                ? exportScenes[0].id
                 : null
 
     };
@@ -5970,7 +6134,7 @@ visible:
 }
 
 
-    for (const sceneData of scenes) {
+    for (const sceneData of exportScenes) {
 
         const scene = {
 
@@ -6027,7 +6191,7 @@ visible:
     locked: false,
 
     order:
-        scenes.indexOf(sceneData)
+        exportScenes.indexOf(sceneData)
 
 };
 
@@ -6225,7 +6389,16 @@ const y =
 
     /*
      * 最終 Room JSON
+     * 明確依照編輯器中的場景陣列順序重建 scenes 字典，並同步每個場景的 order。
      */
+    const orderedSceneEntities = {};
+    exportScenes.forEach((sceneData, index) => {
+        const exportedScene = sceneEntities[sceneData.id];
+        if (exportedScene) {
+            exportedScene.order = index;
+            orderedSceneEntities[sceneData.id] = exportedScene;
+        }
+    });
 
     const data = {
 
@@ -6251,7 +6424,7 @@ const y =
     effects: {},
 
     scenes:
-        sceneEntities,
+        orderedSceneEntities,
 
     savedatas: {},
 
@@ -6745,8 +6918,60 @@ function loadImage(src) {
 
 
 /* ==========================================
-   初始化
+   初始化 / 重設編輯器
 ========================================== */
+
+async function clearPersistedEditorState() {
+    try {
+        const db = await openAutosaveDB();
+        await new Promise((resolve, reject) => {
+            const transaction = db.transaction(AUTOSAVE_STORE_NAME, "readwrite");
+            transaction.objectStore(AUTOSAVE_STORE_NAME).delete(AUTOSAVE_KEY);
+            transaction.oncomplete = resolve;
+            transaction.onerror = () => reject(transaction.error || new Error("清除自動儲存失敗"));
+            transaction.onabort = () => reject(transaction.error || new Error("清除自動儲存中止"));
+        });
+        db.close();
+    } catch (error) {
+        console.warn("IndexedDB 初始化清除失敗：", error);
+    }
+
+    try {
+        localStorage.removeItem(AUTOSAVE_DB_NAME + "_" + AUTOSAVE_KEY);
+    } catch (error) {
+        console.warn("localStorage 初始化清除失敗：", error);
+    }
+}
+
+async function initializeEditorToBlank() {
+    if (!confirm("確認要初始化嗎？\n\n初始化後目前的場景、元件、背景與前景資料都會清除，並建立全新的「場景 1」。")) {
+        return;
+    }
+
+    await clearPersistedEditorState();
+
+    historyActionActive = true;
+    scenes.splice(0, scenes.length);
+    sharedObjects.splice(0, sharedObjects.length);
+
+    const firstScene = createScene("場景 1");
+    scenes.push(firstScene);
+    currentSceneId = firstScene.id;
+    selectedId = null;
+
+    historyStack.length = 0;
+    historyActionBaseline = null;
+    historyActionActive = false;
+
+    renderSceneList();
+    loadCurrentScene();
+    render();
+    resetHistoryBaseline();
+
+    /* 初始化後立即建立新的乾淨自動儲存狀態。 */
+    await saveEditorStateToStorage();
+    setAutosaveStatus("自動儲存：已初始化", true);
+}
 
 async function initializeEditor() {
 
