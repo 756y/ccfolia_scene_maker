@@ -251,6 +251,7 @@ button.full{width:100%}
 ========================================================= */
 #workspace{
     flex:1;min-width:0;position:relative;overflow:hidden;
+    touch-action:none;
     background-color:#0d131b;
     background-image:
         linear-gradient(45deg,#131c27 25%,transparent 25%),
@@ -260,7 +261,7 @@ button.full{width:100%}
     background-size:32px 32px;
     background-position:0 0,0 16px,16px -16px,-16px 0;
 }
-#workspace::before{content:"工作區";position:absolute;top:14px;left:16px;color:#526176;font-size:10px;letter-spacing:1px;pointer-events:none;z-index:2}
+#workspace::before{content:"工作區";position:absolute;top:14px;left:16px;color:#526176;font-size:10px;letter-spacing:1px;pointer-events:none;z-index:2}\n#workspace{cursor:grab}\n#workspace.is-panning{cursor:grabbing}\n#workspace .scene-object{cursor:move}
 #viewportControls{
     position:absolute;right:16px;bottom:16px;z-index:1000;
     display:flex;align-items:center;gap:5px;padding:6px;
@@ -273,8 +274,21 @@ button.full{width:100%}
 #autosaveStatus{font-size:9px;color:#718097;min-width:72px;text-align:center}
 #zoomValue{min-width:50px;text-align:center;font-size:11px;color:#c4cfdd}
 
-#scene{position:absolute;width:1920px;height:1080px;left:50%;top:50%;margin-left:-960px;margin-top:-540px;background:#0c0f13;overflow:hidden;transform-origin:center center;box-shadow:0 0 0 1px #4a5666,0 18px 50px rgba(0,0,0,.5)}
-#background{position:absolute;left:0;top:0;width:1920px;height:1080px;object-fit:fill;pointer-events:none;z-index:-1000}
+#background{
+    position:absolute;
+    left:-3%;
+    top:-3%;
+    width:106%;
+    height:106%;
+    object-fit:cover;
+    object-position:center center;
+    pointer-events:none;
+    z-index:0;
+    filter:blur(8px) brightness(1);
+    transform:scale(1.04);
+    opacity:1;
+}
+#scene{position:absolute;width:1920px;height:1080px;left:50%;top:50%;margin-left:-960px;margin-top:-540px;background:transparent;overflow:visible;transform-origin:center center;box-shadow:none;z-index:1}
 #objects{position:absolute;left:0;top:0;width:1920px;height:1080px;pointer-events:none}
 .scene-object{position:absolute;transform-origin:center center;user-select:none;-webkit-user-select:none;-webkit-user-drag:none;touch-action:none;cursor:move;pointer-events:auto}
 .scene-object.selected{outline:2px solid var(--accent);outline-offset:1px;filter:drop-shadow(0 0 5px rgba(77,156,255,.25))}
@@ -483,14 +497,14 @@ button.full{width:100%}
 
     </div>
 
+    <!-- 背景：獨立於無邊界畫布，填滿整個工作區並模糊顯示 -->
+    <img id="background">
+
     <div id="scene">
 
     <div id="dropHint">
         請匯入圖片
     </div>
-
-    <!-- 背景 -->
-    <img id="background">
 
     <!-- 一般圖片物件 -->
     <div id="objects"></div>
@@ -7048,57 +7062,16 @@ function updateViewport(){
 
 
 /* ---------------------------------------------------------
-   限制畫布不要完全跑出工作區
+   無邊界視口
+   ---------------------------------------------------------
+   畫布可以自由平移，不限制在工作區內。
 --------------------------------------------------------- */
 
 function clampViewport(){
-
-    const workspace =
-        document.getElementById("workspace");
-
-    if(!workspace) return;
-
-    const vw =
-        workspace.clientWidth;
-
-    const vh =
-        workspace.clientHeight;
-
-    const canvasWidth =
-        1920 * viewScale;
-
-    const canvasHeight =
-        1080 * viewScale;
-
     /*
-     * 至少保留一部分畫布在畫面內
+     * 無邊界畫布：視口位置不再限制在固定範圍內。
+     * viewX / viewY 只影響觀看位置，不會修改任何物件座標。
      */
-    const minVisible = 120;
-
-    const maxX =
-        Math.max(
-            0,
-            (canvasWidth + vw) / 2 - minVisible
-        );
-
-    const maxY =
-        Math.max(
-            0,
-            (canvasHeight + vh) / 2 - minVisible
-        );
-
-    viewX =
-        Math.max(
-            -maxX,
-            Math.min(maxX, viewX)
-        );
-
-    viewY =
-        Math.max(
-            -maxY,
-            Math.min(maxY, viewY)
-        );
-
 }
 
 
@@ -7116,8 +7089,6 @@ function setViewport(scale, x = viewX, y = viewY){
 
     viewX = x;
     viewY = y;
-
-    clampViewport();
 
     updateViewport();
 
@@ -7232,8 +7203,6 @@ document
             mouseY -
             canvasY * newScale;
 
-        clampViewport();
-
         updateViewport();
 
     },
@@ -7305,16 +7274,21 @@ document
    空白區域拖曳
 --------------------------------------------------------- */
 
-sceneCanvas.addEventListener(
-    "mousedown",
+document.getElementById("workspace").addEventListener(
+    "pointerdown",
     function(e){
 
         /*
-         * 只有點到 Scene 空白處
+         * 空白工作區／Scene 空白處都可以平移。
+         * 滑鼠與手指都使用 Pointer Events，因此觸控裝置
+         * 可以直接用手指拖動畫布。
+         * 點到圖片、控制工具列或其他操作元件時，不攔截原本功能。
          */
-        if(e.target !== sceneCanvas) return;
+        const isWorkspaceBlank = e.target === this;
+        const isSceneBlank = e.target === sceneCanvas;
+        if(!isWorkspaceBlank && !isSceneBlank) return;
 
-        if(e.button !== 0) return;
+        if(e.pointerType === "mouse" && e.button !== 0) return;
 
         viewDragging = true;
 
@@ -7324,8 +7298,11 @@ sceneCanvas.addEventListener(
         viewStartX = viewX;
         viewStartY = viewY;
 
-        sceneCanvas.style.cursor =
-    "grabbing";
+        this.classList.add("is-panning");
+
+        try {
+            this.setPointerCapture(e.pointerId);
+        } catch (_) {}
 
         e.preventDefault();
 
@@ -7337,8 +7314,8 @@ sceneCanvas.addEventListener(
    平移
 --------------------------------------------------------- */
 
-document.addEventListener(
-    "mousemove",
+document.getElementById("workspace").addEventListener(
+    "pointermove",
     function(e){
 
         if(!viewDragging) return;
@@ -7351,9 +7328,9 @@ document.addEventListener(
             viewStartY +
             (e.clientY - viewDragStartY);
 
-        clampViewport();
-
         updateViewport();
+
+        e.preventDefault();
 
     }
 );
@@ -7363,17 +7340,37 @@ document.addEventListener(
    結束平移
 --------------------------------------------------------- */
 
-document.addEventListener(
-    "mouseup",
-    function(){
+function finishViewportDrag(e){
 
-        if(!viewDragging) return;
+    if(!viewDragging) return;
 
-        viewDragging = false;
+    /*
+     * 只在目前的畫布平移手勢結束時清除狀態。
+     */
+    viewDragging = false;
 
-        sceneCanvas.style.cursor = "";
+    const workspace =
+        document.getElementById("workspace");
 
+    workspace.classList.remove("is-panning");
+
+    if(e && e.pointerId !== undefined){
+        try {
+            workspace.releasePointerCapture(e.pointerId);
+        } catch (_) {}
     }
+
+}
+
+
+document.getElementById("workspace").addEventListener(
+    "pointerup",
+    finishViewportDrag
+);
+
+document.getElementById("workspace").addEventListener(
+    "pointercancel",
+    finishViewportDrag
 );
 
 
@@ -7381,11 +7378,10 @@ document.addEventListener(
    視窗大小改變
 --------------------------------------------------------- */
 
+
 window.addEventListener(
     "resize",
     function(){
-
-        clampViewport();
 
         updateViewport();
 
