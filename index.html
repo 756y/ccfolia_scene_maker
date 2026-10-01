@@ -176,6 +176,8 @@ button.full{width:100%}
     font-size:13px;line-height:1;
 }
 .object-state-button:hover{background:#29364a;border-color:#43546b}
+.object-list-delete{color:#ff7f88}
+.object-list-delete:hover{background:#5a2931;color:#fff;border-color:#8d434d}
 .empty-list{padding:15px 10px;text-align:center;color:#667489;font-size:11px}
 
 /* 選取物件 */
@@ -4509,6 +4511,32 @@ function updateList() {
         });
         actions.appendChild(lockButton);
 
+        /* 複製 */
+        const duplicateButton = document.createElement("button");
+        duplicateButton.type = "button";
+        duplicateButton.className = "object-state-button";
+        duplicateButton.title = "複製物件";
+        duplicateButton.textContent = "⧉";
+        duplicateButton.addEventListener("click", function(e) {
+            e.stopPropagation();
+            selectedId = object.id;
+            duplicateSelectedObject();
+        });
+        actions.appendChild(duplicateButton);
+
+        /* 刪除 */
+        const deleteButton = document.createElement("button");
+        deleteButton.type = "button";
+        deleteButton.className = "object-state-button object-list-delete";
+        deleteButton.title = "刪除物件";
+        deleteButton.textContent = "×";
+        deleteButton.addEventListener("click", function(e) {
+            e.stopPropagation();
+            selectedId = object.id;
+            deleteSelectedObject();
+        });
+        actions.appendChild(deleteButton);
+
         div.appendChild(thumb);
         div.appendChild(info);
         div.appendChild(actions);
@@ -4679,6 +4707,15 @@ document.getElementById("nameInput")
     if (!object) return;
 
     object.name = this.value;
+
+    /* 選取物件預覽名稱也要即時同步 */
+    const selectedPreviewName =
+        document.getElementById("selectedObjectPreviewName");
+
+    if (selectedPreviewName) {
+        selectedPreviewName.textContent =
+            object.name || "未命名元件";
+    }
 
     render();
 
@@ -6080,8 +6117,11 @@ const y =
             height:
                 height,
 
+            angle:
+                Number(object.angle) || 0,
+
             locked:
-                false,
+                object.locked === true,
 
             freezed:
                 false,
