@@ -294,6 +294,14 @@ button.full{width:100%}
 .scene-object.selected{outline:2px solid var(--accent);outline-offset:1px;filter:drop-shadow(0 0 5px rgba(77,156,255,.25))}
 #foreground{position:absolute;left:480px;top:180px;width:960px;height:720px;object-fit:fill;object-position:center center;pointer-events:none;z-index:0}
 #sceneGrid{position:absolute;left:0;top:0;width:1920px;height:1080px;pointer-events:none;z-index:100;background-image:linear-gradient(rgba(255,255,255,.10) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.10) 1px,transparent 1px);background-size:24px 24px;background-position:0 12px}
+.settings-backdrop{position:fixed;inset:0;z-index:5000;background:rgba(3,8,15,.76);display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(5px)}
+.settings-panel{width:min(620px,96vw);max-height:min(88vh,850px);overflow:auto;background:#182130;border:1px solid #40516a;border-radius:16px;box-shadow:0 24px 80px rgba(0,0,0,.55)}
+.settings-heading{display:flex;align-items:flex-start;justify-content:space-between;padding:20px 22px 14px;border-bottom:1px solid #2a3547}
+.settings-heading h2{font-size:19px;margin:0}.settings-heading p{font-size:12px;color:#8e9bae;margin:7px 0 0}
+.settings-content{padding:18px 22px}.settings-content h3{font-size:13px;margin:4px 0 12px;color:#dce6f4}.settings-content h3:not(:first-child){margin-top:22px}
+.settings-content .control label{font-size:12px}.settings-content .control input[type=number]{height:38px}
+.settings-content .checkbox-row{margin-top:9px}.settings-footer{display:flex;justify-content:flex-end;padding:14px 22px;border-top:1px solid #2a3547}
+
 
 /* 縮放控制點 */
 .resize-handle{position:absolute;width:12px;height:12px;margin-left:-6px;margin-top:-6px;background:#4d9cff;border:2px solid #fff;border-radius:50%;z-index:2000;pointer-events:auto;touch-action:none;box-sizing:border-box;box-shadow:0 1px 4px rgba(0,0,0,.5)}
@@ -335,6 +343,7 @@ button.full{width:100%}
             <strong>Cocofolia 場景建置器</strong>
             <span>Scene Builder · 快速編輯工作區</span>
         </div>
+        <button id="openSettings" type="button" title="場景設定" style="margin-left:auto;white-space:nowrap">⚙ 設定</button>
     </div>
 
     <!-- 新增元件 -->
@@ -439,20 +448,6 @@ button.full{width:100%}
                     <input id="sceneNameInput" type="text" placeholder="例如：教室、走廊、餐廳">
                 </div>
 
-                <div class="two-col">
-                    <div class="control"><label>前景寬度</label><input id="foregroundWidthInput" type="number" min="1" step="1"></div>
-                    <div class="control"><label>前景高度</label><input id="foregroundHeightInput" type="number" min="1" step="1"></div>
-                </div>
-
-                <div class="control checkbox-row">
-                    <label for="foregroundFitInput">圖片符合前景尺寸</label>
-                    <input id="foregroundFitInput" type="checkbox">
-                </div>
-                <div class="control checkbox-row">
-                    <label for="alignWithGridInput">拖曳時自動吸附格線</label>
-                    <input id="alignWithGridInput" type="checkbox">
-                </div>
-
                 <div class="row">
                     <button id="clearBackground">清除背景</button>
                     <button id="clearForeground">清除前景</button>
@@ -476,6 +471,31 @@ button.full{width:100%}
         </div>
     </section>
 
+</div>
+
+<div id="settingsModal" class="settings-backdrop" style="display:none" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+  <section class="settings-panel">
+    <div class="settings-heading">
+      <div><h2 id="settingsTitle">⚙ 場景設定</h2><p>調整目前場景的畫布與前景顯示方式</p></div>
+      <button id="closeSettings" type="button" aria-label="關閉設定">✕</button>
+    </div>
+    <div class="settings-content">
+      <h3>場景大小（像素）</h3>
+      <div class="two-col">
+        <div class="control"><label for="sceneWidthInput">場景寬度</label><input id="sceneWidthInput" type="number" min="1" step="1" value="1920"></div>
+        <div class="control"><label for="sceneHeightInput">場景高度</label><input id="sceneHeightInput" type="number" min="1" step="1" value="1080"></div>
+      </div>
+      <h3>前景大小（格數，每格 24 × 24 px）</h3>
+      <div class="two-col">
+        <div class="control"><label for="foregroundWidthInput">前景寬度</label><input id="foregroundWidthInput" type="number" min="1" step="1"></div>
+        <div class="control"><label for="foregroundHeightInput">前景高度</label><input id="foregroundHeightInput" type="number" min="1" step="1"></div>
+      </div>
+      <div class="control checkbox-row"><label for="foregroundFitInput">圖片符合前景尺寸</label><input id="foregroundFitInput" type="checkbox" checked></div>
+      <div class="control checkbox-row"><label for="alignWithGridInput">拖曳時自動吸附格線</label><input id="alignWithGridInput" type="checkbox" checked></div>
+      <div class="control checkbox-row"><label for="showGridInput">顯示格線</label><input id="showGridInput" type="checkbox" checked></div>
+    </div>
+    <div class="settings-footer"><button id="closeSettingsBottom" type="button">完成</button></div>
+  </section>
 </div>
 
 <div id="workspace">
@@ -717,7 +737,7 @@ function editorStateSignature(state = null) {
     });
 
     source.scenes.forEach(scene => {
-        parts.push(["scene",scene.id,scene.name,getHistoryImageId(scene.backgroundData),getHistoryImageId(scene.foregroundData),scene.foregroundWidth,scene.foregroundHeight,scene.foregroundFit?1:0,scene.alignWithGrid?1:0].join("|"));
+        parts.push(["scene",scene.id,scene.name,getHistoryImageId(scene.backgroundData),getHistoryImageId(scene.foregroundData),scene.foregroundWidth,scene.foregroundHeight,scene.foregroundFit?1:0,scene.alignWithGrid?1:0,scene.sceneWidth||1920,scene.sceneHeight||1080,scene.showGrid===false?0:1].join("|"));
         (scene.objects || []).forEach(object => {
             parts.push(["marker",object.id,object.name,object.x,object.y,object.z,object.width,object.height,object.angle,object.opacity,object.flipX?1:0,object.flipY?1:0,object.visible===false?0:1,object.locked===true?1:0,object.type||"",getHistoryImageId(object.imageUrl)].join("|"));
         });
@@ -820,6 +840,9 @@ function applyPersistedState(saved) {
         if(scene.foregroundHeight==null) scene.foregroundHeight=30;
         if(scene.foregroundFit==null) scene.foregroundFit=true;
         if(scene.alignWithGrid==null) scene.alignWithGrid=true;
+        if(scene.sceneWidth==null) scene.sceneWidth=1920;
+        if(scene.sceneHeight==null) scene.sceneHeight=1080;
+        if(scene.showGrid==null) scene.showGrid=true;
     });
     sharedObjects.forEach(object=>{
         if(typeof object.visible!=="boolean") object.visible=true;
@@ -975,6 +998,9 @@ function createScene(name = "新場景") {
         id: createId(),
 
         name: name,
+        sceneWidth: 1920,
+        sceneHeight: 1080,
+        showGrid: true,
 
         backgroundData: null,
 
@@ -1114,6 +1140,12 @@ function loadCurrentScene() {
     document.getElementById("sceneNameInput").value =
         scene.name;
         
+    /* 場景尺寸與顯示設定 */
+    sceneWidthInput.value = scene.sceneWidth ?? 1920;
+    sceneHeightInput.value = scene.sceneHeight ?? 1080;
+    showGridInput.checked = scene.showGrid ?? true;
+    applySceneDimensions();
+
     /* 前景設定 */
 foregroundWidthInput.value =
     scene.foregroundWidth ?? 40;
@@ -1167,6 +1199,25 @@ updateForegroundStyle();
    前景顯示設定
 ========================================== */
 
+function applySceneDimensions() {
+    const scene = getCurrentScene();
+    if (!scene) return;
+    const width = Math.max(1, Number(scene.sceneWidth) || 1920);
+    const height = Math.max(1, Number(scene.sceneHeight) || 1080);
+    scene.sceneWidth = width;
+    scene.sceneHeight = height;
+    sceneCanvas.style.width = width + "px";
+    sceneCanvas.style.height = height + "px";
+    sceneCanvas.style.marginLeft = (-width / 2) + "px";
+    sceneCanvas.style.marginTop = (-height / 2) + "px";
+    objectsContainer.style.width = width + "px";
+    objectsContainer.style.height = height + "px";
+    sceneGrid.style.width = width + "px";
+    sceneGrid.style.height = height + "px";
+    sceneGrid.style.display = scene.showGrid === false ? "none" : "block";
+    updateForegroundStyle();
+}
+
 function updateForegroundStyle() {
 
     const scene =
@@ -1195,10 +1246,10 @@ function updateForegroundStyle() {
      * 1920 × 1080 畫布中央
      */
     const left =
-        (1920 - width) / 2;
+        ((Number(scene.sceneWidth) || 1920) - width) / 2;
 
     const top =
-        (1080 - height) / 2;
+        ((Number(scene.sceneHeight) || 1080) - height) / 2;
 
     foreground.style.width =
         width + "px";
@@ -1431,6 +1482,11 @@ const foregroundFitInput =
     
 const alignWithGridInput =
     document.getElementById("alignWithGridInput");
+const sceneWidthInput = document.getElementById("sceneWidthInput");
+const sceneHeightInput = document.getElementById("sceneHeightInput");
+const showGridInput = document.getElementById("showGridInput");
+const sceneGrid = document.getElementById("sceneGrid");
+const settingsModal = document.getElementById("settingsModal");
 
 const editor = document.getElementById("editor");
 
@@ -4761,11 +4817,11 @@ function updatePositionInputs(object) {
      */
 
     const logicalX =
-        (object.x - SCENE_ORIGIN_X) /
+        (object.x - getSceneOriginX()) /
         SCENE_GRID_SIZE;
 
     const logicalY =
-        (object.y - SCENE_ORIGIN_Y) /
+        (object.y - getSceneOriginY()) /
         SCENE_GRID_SIZE;
 
     document.getElementById("xInput").value =
@@ -4870,6 +4926,51 @@ document
     );
 
 
+/* 場景設定面板 */
+function openSceneSettings() {
+    const scene = getCurrentScene();
+    if (!scene) return;
+    sceneWidthInput.value = scene.sceneWidth ?? 1920;
+    sceneHeightInput.value = scene.sceneHeight ?? 1080;
+    foregroundWidthInput.value = scene.foregroundWidth ?? 40;
+    foregroundHeightInput.value = scene.foregroundHeight ?? 30;
+    foregroundFitInput.checked = scene.foregroundFit ?? true;
+    alignWithGridInput.checked = scene.alignWithGrid ?? true;
+    showGridInput.checked = scene.showGrid ?? true;
+    settingsModal.style.display = "flex";
+}
+function closeSceneSettings() {
+    settingsModal.style.display = "none";
+    saveEditorStateToStorage();
+    recordHistoryAfterRender();
+}
+document.getElementById("openSettings").addEventListener("click", openSceneSettings);
+document.getElementById("closeSettings").addEventListener("click", closeSceneSettings);
+document.getElementById("closeSettingsBottom").addEventListener("click", closeSceneSettings);
+settingsModal.addEventListener("click", e => { if (e.target === settingsModal) closeSceneSettings(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && settingsModal.style.display !== "none") closeSceneSettings(); });
+function updateSceneDimensionFromInput() {
+    const scene = getCurrentScene();
+    if (!scene) return;
+    scene.sceneWidth = Math.max(1, Math.round(Number(sceneWidthInput.value) || 1920));
+    scene.sceneHeight = Math.max(1, Math.round(Number(sceneHeightInput.value) || 1080));
+    sceneWidthInput.value = scene.sceneWidth;
+    sceneHeightInput.value = scene.sceneHeight;
+    applySceneDimensions();
+    updateViewport();
+    renderSceneList();
+}
+sceneWidthInput.addEventListener("change", updateSceneDimensionFromInput);
+sceneHeightInput.addEventListener("change", updateSceneDimensionFromInput);
+showGridInput.addEventListener("change", function() {
+    const scene = getCurrentScene();
+    if (!scene) return;
+    scene.showGrid = this.checked;
+    sceneGrid.style.display = this.checked ? "block" : "none";
+    recordHistoryAfterRender();
+    saveEditorStateToStorage();
+});
+
 /* ==========================================
    編輯欄位
 ========================================== */
@@ -4908,7 +5009,7 @@ document.getElementById("xInput")
     Number(this.value) || 0;
 
 object.x =
-    SCENE_ORIGIN_X +
+    getSceneOriginX() +
     logicalX * SCENE_GRID_SIZE;
 
 if (
@@ -4933,7 +5034,7 @@ document.getElementById("yInput")
     Number(this.value) || 0;
 
 object.y =
-    SCENE_ORIGIN_Y +
+    getSceneOriginY() +
     logicalY * SCENE_GRID_SIZE;
 
 if (
@@ -5158,15 +5259,11 @@ opacityInput.addEventListener("input", function() {
    - 圖片可以保留原本的任意比例
    ========================================== */
 
-const SCENE_WIDTH = 1920;
-const SCENE_HEIGHT = 1080;
 const SCENE_GRID_SIZE = 24;
-
-const SCENE_ORIGIN_X =
-    SCENE_WIDTH / 2;
-
-const SCENE_ORIGIN_Y =
-    SCENE_HEIGHT / 2;
+function getSceneWidth(){ return Number(getCurrentScene()?.sceneWidth) || 1920; }
+function getSceneHeight(){ return Number(getCurrentScene()?.sceneHeight) || 1080; }
+function getSceneOriginX(){ return getSceneWidth() / 2; }
+function getSceneOriginY(){ return getSceneHeight() / 2; }
 
 
 /*
@@ -6729,8 +6826,8 @@ document.getElementById("exportPNG")
     const canvas =
         document.createElement("canvas");
 
-    const sceneWidth = 1920;
-const sceneHeight = 1080;
+    const sceneWidth = getSceneWidth();
+    const sceneHeight = getSceneHeight();
 
     canvas.width = sceneWidth;
 
@@ -7115,10 +7212,10 @@ function fitCanvas(){
     const padding = 40;
 
     const scaleX =
-        (vw - padding) / 1920;
+        (vw - padding) / getSceneWidth();
 
     const scaleY =
-        (vh - padding) / 1080;
+        (vh - padding) / getSceneHeight();
 
     viewScale =
         Math.min(scaleX, scaleY);
