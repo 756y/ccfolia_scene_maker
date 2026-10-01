@@ -322,6 +322,12 @@ button.full{width:100%}
 .settings-content .checkbox-row{margin-top:9px}.settings-footer{display:flex;justify-content:flex-end;padding:14px 22px;border-top:1px solid #2a3547}
 
 
+/* 複製／貼上快捷選單（支援手機長按；選項僅顯示文字） */
+#copyPasteMenu{position:fixed;z-index:10000;display:none;flex-direction:column;align-items:stretch;gap:2px;padding:5px 8px;background:rgba(17,24,34,.98);border:1px solid #52657f;border-radius:8px;box-shadow:0 8px 28px rgba(0,0,0,.5)}
+#copyPasteMenu button{appearance:none;-webkit-appearance:none;display:block;width:100%;min-width:0;min-height:0;padding:7px 5px;margin:0;background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;color:#edf3fb;font-size:14px;line-height:1.4;text-align:left;cursor:pointer}
+#copyPasteMenu button:hover,#copyPasteMenu button:focus-visible{background:transparent!important;color:#8fc4ff;outline:none}
+#copyPasteMenu #touchDeleteButton{color:#ff8b93}
+
 /* 縮放控制點 */
 .resize-handle{position:absolute;width:12px;height:12px;margin-left:-6px;margin-top:-6px;background:#4d9cff;border:2px solid #fff;border-radius:50%;z-index:2000;pointer-events:auto;touch-action:none;box-sizing:border-box;box-shadow:0 1px 4px rgba(0,0,0,.5)}
 .resize-handle.nw,.resize-handle.se{cursor:nwse-resize}.resize-handle.ne,.resize-handle.sw{cursor:nesw-resize}.resize-handle.n,.resize-handle.s{cursor:ns-resize}.resize-handle.w,.resize-handle.e{cursor:ew-resize}
@@ -513,8 +519,8 @@ button.full{width:100%}
       </div>
       <h3>前景大小（格數，每格 24 × 24 px）</h3>
       <div class="two-col">
-        <div class="control"><label for="foregroundWidthInput">前景寬度</label><input id="foregroundWidthInput" type="number" min="1" step="1"></div>
-        <div class="control"><label for="foregroundHeightInput">前景高度</label><input id="foregroundHeightInput" type="number" min="1" step="1"></div>
+        <div class="control"><label for="foregroundWidthInput">前景寬度</label><input id="foregroundWidthInput" type="number" step="any"></div>
+        <div class="control"><label for="foregroundHeightInput">前景高度</label><input id="foregroundHeightInput" type="number" step="any"></div>
       </div>
       <div class="control checkbox-row"><label for="foregroundFitInput">圖片符合前景尺寸</label><input id="foregroundFitInput" type="checkbox" checked></div>
       <div class="control checkbox-row"><label for="alignWithGridInput">拖曳時自動吸附格線</label><input id="alignWithGridInput" type="checkbox" checked></div>
@@ -684,6 +690,11 @@ button.full{width:100%}
 
 </div>
 
+<div id="copyPasteMenu" role="menu" aria-label="元件操作">
+  <button type="button" id="touchCopyButton">複製</button>
+  <button type="button" id="touchPasteButton">貼上</button>
+  <button type="button" id="touchDeleteButton">刪除</button>
+</div>
 
 <script>
 
@@ -988,11 +999,144 @@ async function loadEditorStateFromStorage(){
 
 setInterval(saveEditorStateToStorage,AUTOSAVE_INTERVAL);
 
+/* =========================================================
+   跨場景複製／貼上：Ctrl+C 只放入暫存，不立即新增物件
+========================================================= */
+let copiedObjectTemplate = null;
+let lastScenePointer = null;
+const copyPasteMenu = document.getElementById("copyPasteMenu");
+const touchCopyButton = document.getElementById("touchCopyButton");
+const touchPasteButton = document.getElementById("touchPasteButton");
+const touchDeleteButton = document.getElementById("touchDeleteButton");
+let longPressTimer = null;
+let longPressStart = null;
+let longPressTriggered = false;
+let longPressSelectionIds = [];
+
+function copySelectedObjectToClipboard() {
+    const object = getSelectedObject();
+    if (!object) return false;
+    // 深層複製，保留元件原本的所有資料欄位與數值。
+    copiedObjectTemplate = JSON.parse(JSON.stringify(object));
+    return true;
+}
+
+function pasteCopiedObjectAt(clientX = null, clientY = null) {
+    if (!copiedObjectTemplate) return false;
+    const scene = getCurrentScene();
+    if (!scene) return false;
+    const source = copiedObjectTemplate;
+    // 貼上時保留原本名稱、位置、尺寸、旋轉等全部數值；只產生新的唯一 ID。
+    const copy = JSON.parse(JSON.stringify(source));
+    copy.id = createId();
+    if (copy.type === "sceneMarker") scene.objects.push(copy);
+    else sharedObjects.push(copy);
+    selectedIds.clear();
+    selectedIds.add(copy.id);
+    selectedId = copy.id;
+    render();
+    selectObject(copy.id);
+    recordHistoryAfterRender();
+    saveEditorStateToStorage();
+    return true;
+}
+
+function showCopyPasteMenu(x, y, mode) {
+    if (!copyPasteMenu) return;
+    copyPasteMenu.style.display = "flex";
+    touchCopyButton.style.display = mode === "object" ? "block" : "none";
+    touchPasteButton.style.display = copiedObjectTemplate ? "block" : "none";
+    touchDeleteButton.style.display = (mode === "object" || mode === "multi") ? "block" : "none";
+    if (!copiedObjectTemplate) touchPasteButton.style.display = "none";
+    const left = Math.max(8, Math.min(x, window.innerWidth - copyPasteMenu.offsetWidth - 8));
+    const top = Math.max(8, Math.min(y, window.innerHeight - copyPasteMenu.offsetHeight - 8));
+    copyPasteMenu.style.left = left + "px";
+    copyPasteMenu.style.top = top + "px";
+}
+function hideCopyPasteMenu() { if (copyPasteMenu) copyPasteMenu.style.display = "none"; }
+
+touchCopyButton.addEventListener("click", function(e) {
+    e.stopPropagation();
+    const ok = copySelectedObjectToClipboard();
+    hideCopyPasteMenu();
+    if (ok) setAutosaveStatus("已複製元件，可切換場景後貼上");
+});
+touchPasteButton.addEventListener("click", function(e) {
+    e.stopPropagation();
+    const ok = pasteCopiedObjectAt();
+    hideCopyPasteMenu();
+    if (!ok) setAutosaveStatus("請先複製一個元件");
+});
+touchDeleteButton.addEventListener("click", function(e) {
+    e.stopPropagation();
+    const ids = longPressSelectionIds.slice();
+    hideCopyPasteMenu();
+    if (ids.length) deleteObjectsByIds(ids);
+    else deleteSelectedObject();
+});
+document.addEventListener("pointerdown", function(e) {
+    if (!copyPasteMenu.contains(e.target)) hideCopyPasteMenu();
+}, true);
+
+// 長按圖片顯示「複製／貼上」；長按空白處顯示「貼上」。
+function beginTouchLongPress(e, mode) {
+    if (e.pointerType === "mouse" || (e.button != null && e.button !== 0)) return;
+    const target = e.currentTarget;
+    const startX = e.clientX;
+    const startY = e.clientY;
+    longPressTriggered = false;
+    longPressStart = { x: startX, y: startY };
+    clearTimeout(longPressTimer);
+    longPressTimer = setTimeout(function() {
+        longPressTriggered = true;
+        if (mode === "blank") viewDragging = false;
+        let menuMode = mode;
+        if (mode === "object") {
+            // 長按只顯示操作選單，不繼續拖曳或留下未完成的歷史動作。
+            dragging = false;
+            dragObject = null;
+            finishHistoryAction();
+            const obj = target ? getObjects().find(item => item.id === target.dataset.id) : null;
+            if (obj) {
+                // 長按已在多選集合中的物件時，保留整組選取，讓刪除能作用於全部。
+                if (selectedIds.size > 1 && selectedIds.has(obj.id)) {
+                    longPressSelectionIds = Array.from(selectedIds);
+                    menuMode = "multi";
+                } else {
+                    selectedIds.clear();
+                    selectedIds.add(obj.id);
+                    longPressSelectionIds = [obj.id];
+                    selectedId = obj.id;
+                    selectObject(obj.id);
+                    updateSelectionVisual();
+                }
+            } else {
+                longPressSelectionIds = selectedId ? [selectedId] : [];
+            }
+        } else {
+            longPressSelectionIds = selectedIds.size > 1 ? Array.from(selectedIds) : (selectedId ? [selectedId] : []);
+        }
+        showCopyPasteMenu(startX, startY, menuMode);
+    }, 600);
+}
+function cancelTouchLongPress(e) {
+    if (longPressStart && e && Math.hypot(e.clientX - longPressStart.x, e.clientY - longPressStart.y) > 12) clearTimeout(longPressTimer);
+}
+document.addEventListener("pointerup", function() { clearTimeout(longPressTimer); }, true);
+document.addEventListener("pointercancel", function() { clearTimeout(longPressTimer); }, true);
+document.addEventListener("pointermove", cancelTouchLongPress, true);
+
 document.addEventListener("keydown",function(e){
     const key = e.key.toLowerCase();
     const modifier = (e.ctrlKey || e.metaKey) && !e.altKey;
     if (!modifier) return;
-    if (key === "z" && !e.shiftKey) { e.preventDefault(); undoLastAction(); }
+    const active = document.activeElement;
+    if (active && (active.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName))) {
+        if (key !== "z" && key !== "y") return;
+    }
+    if (key === "c" && !e.shiftKey) { if (copySelectedObjectToClipboard()) { e.preventDefault(); } }
+    else if (key === "v" && !e.shiftKey) { if (copiedObjectTemplate) { e.preventDefault(); pasteCopiedObjectAt(lastScenePointer ? lastScenePointer.x : null, lastScenePointer ? lastScenePointer.y : null); } }
+    else if (key === "z" && !e.shiftKey) { e.preventDefault(); undoLastAction(); }
     else if (key === "y" || (key === "z" && e.shiftKey)) { e.preventDefault(); redoLastAction(); }
 });
 
@@ -1293,11 +1437,11 @@ function updateForegroundStyle() {
     const gridSize = 24;
 
     const width =
-        (Number(scene.foregroundWidth) || 40)
+        (Number(scene.foregroundWidth ?? 40))
         * gridSize;
 
     const height =
-        (Number(scene.foregroundHeight) || 30)
+        (Number(scene.foregroundHeight ?? 30))
         * gridSize;
 
     const fit =
@@ -1558,6 +1702,14 @@ const noSelection = document.getElementById("noSelection");
 const sceneCanvas =
     document.getElementById("scene");
 
+// 追蹤最後一次在場景中的指標位置；必須在 sceneCanvas 初始化後綁定。
+sceneCanvas.addEventListener("pointermove", function(e) {
+    const rect = sceneCanvas.getBoundingClientRect();
+    if (e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom) {
+        lastScenePointer = { x: e.clientX, y: e.clientY };
+    }
+});
+
 
 /* ==========================================
    前景尺寸設定
@@ -1572,14 +1724,10 @@ foregroundWidthInput.addEventListener(
 
         if (!scene) return;
 
-        const value =
-            Math.max(
-                1,
-                Number(this.value) || 1
-            );
+        const value = Number(this.value);
+        if (!Number.isFinite(value)) return;
 
-        scene.foregroundWidth =
-            value;
+        scene.foregroundWidth = value;
 
         updateForegroundStyle();
 
@@ -1596,14 +1744,10 @@ foregroundHeightInput.addEventListener(
 
         if (!scene) return;
 
-        const value =
-            Math.max(
-                1,
-                Number(this.value) || 1
-            );
+        const value = Number(this.value);
+        if (!Number.isFinite(value)) return;
 
-        scene.foregroundHeight =
-            value;
+        scene.foregroundHeight = value;
 
         updateForegroundStyle();
 
@@ -2622,11 +2766,11 @@ foregroundImageInput.addEventListener(
             scene.foregroundData =
     prepared.dataURL;
 
-if (!scene.foregroundWidth) {
+if (scene.foregroundWidth == null) {
     scene.foregroundWidth = 40;
 }
 
-if (!scene.foregroundHeight) {
+if (scene.foregroundHeight == null) {
     scene.foregroundHeight = 30;
 }
 
@@ -2751,6 +2895,23 @@ document.getElementById("clearForeground")
 });
 
 /* ==========================================
+   鎖定狀態同步：旋轉與透明度
+========================================== */
+function syncLockedRotationOpacityControls() {
+    const object = getSelectedObject();
+    const locked = !!object && object.locked === true;
+    [
+        document.getElementById("angleInput"),
+        document.getElementById("angleRange"),
+        document.getElementById("opacityInput")
+    ].forEach(control => {
+        if (!control) return;
+        control.disabled = locked;
+        control.title = locked ? "元件已鎖定，無法調整旋轉或透明度" : "";
+    });
+}
+
+/* ==========================================
    Render
 ========================================== */
 
@@ -2779,6 +2940,25 @@ function render() {
             img.className = "scene-object";
             img.dataset.id = object.id;
             img.addEventListener("pointerdown", startDrag);
+            img.addEventListener("pointerdown", function(e) { beginTouchLongPress(e, "object"); });
+            img.addEventListener("contextmenu", function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                const currentObject = getObjects().find(item => item.id === img.dataset.id);
+                if (!currentObject) return;
+                if (selectedIds.size > 1 && selectedIds.has(currentObject.id)) {
+                    longPressSelectionIds = Array.from(selectedIds);
+                    showCopyPasteMenu(e.clientX, e.clientY, "multi");
+                } else {
+                    selectedIds.clear();
+                    selectedIds.add(currentObject.id);
+                    selectedId = currentObject.id;
+                    longPressSelectionIds = [currentObject.id];
+                    selectObject(currentObject.id);
+                    updateSelectionVisual();
+                    showCopyPasteMenu(e.clientX, e.clientY, "object");
+                }
+            });
             img.addEventListener("click", function(e) {
                 e.stopPropagation();
                 const currentObject = getObjects().find(item => item.id === img.dataset.id);
@@ -2820,6 +3000,7 @@ function render() {
     updateDropHint();
     updateObjectQuickToolbar();
     renderResizeHandles();
+    syncLockedRotationOpacityControls();
 }
 
 /* =========================================================
@@ -4560,6 +4741,32 @@ function duplicateSelectedObject() {
    刪除目前物件
 ========================================================= */
 
+function deleteObjectsByIds(ids) {
+    const uniqueIds = new Set((ids || []).filter(Boolean));
+    if (!uniqueIds.size) return;
+    beginHistoryAction();
+    const scene = getCurrentScene();
+    if (scene && Array.isArray(scene.objects)) {
+        for (let i = scene.objects.length - 1; i >= 0; i--) {
+            if (uniqueIds.has(scene.objects[i].id)) scene.objects.splice(i, 1);
+        }
+    }
+    for (let i = sharedObjects.length - 1; i >= 0; i--) {
+        if (uniqueIds.has(sharedObjects[i].id)) sharedObjects.splice(i, 1);
+    }
+    selectedIds.clear();
+    selectedId = null;
+    editor.style.display = "none";
+    const selectedPreview = document.getElementById("selectedObjectPreview");
+    if (selectedPreview) selectedPreview.removeAttribute("src");
+    noSelection.style.display = "block";
+    updateSelectionVisual();
+    render();
+    finishHistoryAction();
+    saveEditorStateToStorage();
+    setAutosaveStatus("已刪除選取的元件");
+}
+
 function deleteSelectedObject() {
 
     if (!selectedId) return;
@@ -4882,6 +5089,7 @@ function selectObject(id) {
         const selectedPreview = document.getElementById("selectedObjectPreview");
         if (selectedPreview) selectedPreview.removeAttribute("src");
         noSelection.style.display = "block";
+        if (typeof syncLockedRotationOpacityControls === "function") syncLockedRotationOpacityControls();
 
         return;
 
@@ -4933,6 +5141,7 @@ updateList();
 updateObjectQuickToolbar();
 
 renderResizeHandles();
+if (typeof syncLockedRotationOpacityControls === "function") syncLockedRotationOpacityControls();
 
 }
 
@@ -5162,7 +5371,7 @@ document.getElementById("angleInput")
 
     const object = getSelectedObject();
 
-    if (!object) return;
+    if (!object || object.locked === true) return;
 
     let value =
         Number(this.value);
@@ -5225,7 +5434,7 @@ angleRange.addEventListener("input", function() {
 
     const object = getSelectedObject();
 
-    if (!object) return;
+    if (!object || object.locked === true) return;
 
     const value =
         Number(this.value);
@@ -5262,7 +5471,7 @@ opacityInput.addEventListener("input", function() {
 
     const object = getSelectedObject();
 
-    if (!object) return;
+    if (!object || object.locked === true) return;
 
     object.opacity =
         Number(this.value) / 100;
@@ -5374,6 +5583,12 @@ let dragAxisLock = null;
 
 function startDrag(e) {
 
+    const id = e.currentTarget.dataset.id;
+    const clickedObject = getObjects().find(item => item.id === id);
+
+    // 鎖定元件不啟動物件拖曳，也不攔截事件；讓工作區接手平移畫布。
+    if (!clickedObject || clickedObject.locked === true) return;
+
     /*
      * 防止同時啟動 Scene 平移
      */
@@ -5384,12 +5599,6 @@ function startDrag(e) {
      * 當成頁面滑動 / 縮放
      */
     e.preventDefault();
-
-    const id =
-        e.currentTarget.dataset.id;
-
-    const clickedObject = getObjects().find(item => item.id === id);
-    if (!clickedObject || clickedObject.locked === true) return;
 
     if (multiSelectMode) {
         if (!selectedIds.has(id)) {
@@ -6340,10 +6549,10 @@ visible:
      * 例如 40 × 30
      */
     fieldWidth:
-        Number(sceneData.foregroundWidth) || 40,
+        Number(sceneData.foregroundWidth ?? 40),
 
     fieldHeight:
-        Number(sceneData.foregroundHeight) || 30,
+        Number(sceneData.foregroundHeight ?? 30),
 
     /*
      * true  = 裁切符合前景尺寸
@@ -6790,17 +6999,58 @@ async function importVIPRoom(file) {
                 flipX: false, flipY: false, visible: true, locked: marker.locked === true, type: "sceneMarker"
             });
         }
-        // ZIP 以前景欄位記錄尺寸（格數）；同時兼容其他版本可能使用的欄位名稱。
-        const rawForegroundWidth = source.fieldWidth ?? source.foregroundWidth ?? source.field?.width ?? source.fieldSize?.width;
-        const rawForegroundHeight = source.fieldHeight ?? source.foregroundHeight ?? source.field?.height ?? source.fieldSize?.height;
-        const foregroundWidth = Number(rawForegroundWidth);
-        const foregroundHeight = Number(rawForegroundHeight);
+        // 逐場景讀取 ZIP 的前景尺寸，並兼容不同版本／巢狀格式。
+        // 編輯器內部以格數儲存（每格 24px）；標明 px/pixel 的欄位才轉成格數。
+        const readForegroundDimension = (axis) => {
+            const isWidth = axis === "width";
+            const aliases = isWidth
+                ? ["fieldWidth", "foregroundWidth", "fieldObjectWidth", "fieldWidthInCells", "fieldSizeX", "foregroundWidthInCells", "fieldWidthPx", "foregroundWidthPx", "fieldPixelWidth"]
+                : ["fieldHeight", "foregroundHeight", "fieldObjectHeight", "fieldHeightInCells", "fieldSizeY", "foregroundHeightInCells", "fieldHeightPx", "foregroundHeightPx", "fieldPixelHeight"];
+            const pixelAliases = new Set(isWidth
+                ? ["fieldWidthPx", "foregroundWidthPx", "fieldPixelWidth"]
+                : ["fieldHeightPx", "foregroundHeightPx", "fieldPixelHeight"]);
+            const candidates = [];
+            const seen = new Set();
+            const walk = (node, depth) => {
+                if (!node || typeof node !== "object" || depth > 7 || seen.has(node)) return;
+                seen.add(node);
+                if (Array.isArray(node)) {
+                    for (const child of node) walk(child, depth + 1);
+                    return;
+                }
+                for (const [key, value] of Object.entries(node)) {
+                    if (value === undefined || value === null || value === "") continue;
+                    if (aliases.includes(key)) {
+                        const number = Number(value);
+                        if (Number.isFinite(number) && number > 0) {
+                            candidates.push({ value: number, pixel: pixelAliases.has(key), priority: aliases.indexOf(key) });
+                        }
+                    }
+                    // 支援 fieldSize / foregroundSize / fieldObject 等物件中的 width、height。
+                    if (["field", "fieldSize", "foreground", "foregroundSize", "fieldObject", "fieldObjectSize", "settings", "data", "size", "dimensions"].includes(key) && value && typeof value === "object") {
+                        const nested = value[axis];
+                        const n = Number(nested);
+                        if (nested !== undefined && nested !== null && nested !== "" && Number.isFinite(n) && n > 0) {
+                            candidates.push({ value: n, pixel: /px|pixel/i.test(key), priority: 20 });
+                        }
+                    }
+                    if (value && typeof value === "object") walk(value, depth + 1);
+                }
+            };
+            walk(source, 0);
+            if (!candidates.length) return isWidth ? 40 : 30;
+            candidates.sort((a, b) => a.priority - b.priority);
+            const found = candidates[0];
+            return found.pixel ? found.value / 24 : found.value;
+        };
+        const foregroundWidth = readForegroundDimension("width");
+        const foregroundHeight = readForegroundDimension("height");
         importedScenes.push({
             id: createId(), name: source.name || ("場景 " + (importedScenes.length + 1)),
             sceneWidth, sceneHeight, showGrid: source.displayGrid !== false,
             backgroundData, foregroundData,
-            foregroundWidth: Number.isFinite(foregroundWidth) && foregroundWidth > 0 ? foregroundWidth : 40,
-            foregroundHeight: Number.isFinite(foregroundHeight) && foregroundHeight > 0 ? foregroundHeight : 30,
+            foregroundWidth,
+            foregroundHeight,
             foregroundFit: source.fieldObjectFit !== "fill",
             alignWithGrid: source.alignWithGrid !== false,
             objects: markers
@@ -6816,6 +7066,15 @@ async function importVIPRoom(file) {
     historyActionActive = false;
     renderSceneList();
     loadCurrentScene();
+    // 匯入後明確同步目前場景的前景數值、控制項與畫面樣式，避免沿用匯入前的舊值。
+    const importedCurrentScene = getCurrentScene();
+    if (importedCurrentScene) {
+        foregroundWidthInput.value = String(importedCurrentScene.foregroundWidth ?? 40);
+        foregroundHeightInput.value = String(importedCurrentScene.foregroundHeight ?? 30);
+        foregroundFitInput.checked = importedCurrentScene.foregroundFit !== false;
+        alignWithGridInput.checked = importedCurrentScene.alignWithGrid !== false;
+        updateForegroundStyle();
+    }
     render();
     resetHistoryBaseline();
     await saveEditorStateToStorage();
@@ -7197,11 +7456,11 @@ if (getForegroundData()) {
     const gridSize = 24;
 
 const foregroundWidth =
-    (Number(scene.foregroundWidth) || 40)
+    (Number(scene.foregroundWidth ?? 40))
     * gridSize;
 
 const foregroundHeight =
-    (Number(scene.foregroundHeight) || 30)
+    (Number(scene.foregroundHeight ?? 30))
     * gridSize;
 
     if (scene.foregroundFit === true) {
@@ -7729,8 +7988,92 @@ document
 
 
 /* ---------------------------------------------------------
+   手機雙指縮放（Pinch Zoom）
+   只改變視口，不會更動任何元件座標。
+--------------------------------------------------------- */
+const pinchWorkspace = document.getElementById("workspace");
+const activeTouchPointers = new Map();
+let pinchActive = false;
+let pinchStartDistance = 0;
+let pinchStartScale = 1;
+let pinchAnchorSceneX = 0;
+let pinchAnchorSceneY = 0;
+
+function getPinchMetrics() {
+    const points = Array.from(activeTouchPointers.values());
+    if (points.length < 2) return null;
+    const a = points[0], b = points[1];
+    const dx = b.x - a.x, dy = b.y - a.y;
+    return {
+        distance: Math.max(1, Math.hypot(dx, dy)),
+        midX: (a.x + b.x) / 2,
+        midY: (a.y + b.y) / 2
+    };
+}
+
+pinchWorkspace.addEventListener("pointerdown", function(e) {
+    if (e.pointerType !== "touch") return;
+    activeTouchPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (activeTouchPointers.size < 2) return;
+
+    const metrics = getPinchMetrics();
+    if (!metrics) return;
+    pinchActive = true;
+    pinchStartDistance = metrics.distance;
+    pinchStartScale = viewScale;
+    const rect = pinchWorkspace.getBoundingClientRect();
+    const midX = metrics.midX - rect.left - rect.width / 2;
+    const midY = metrics.midY - rect.top - rect.height / 2;
+    pinchAnchorSceneX = (midX - viewX) / viewScale;
+    pinchAnchorSceneY = (midY - viewY) / viewScale;
+
+    // 若第一根手指原本正在拖曳物件或平移，雙指開始時立即切換成縮放。
+    dragging = false;
+    dragObject = null;
+    viewDragging = false;
+    pinchWorkspace.classList.remove("is-panning");
+    if (typeof historyActionActive !== "undefined" && historyActionActive && typeof finishHistoryAction === "function") {
+        finishHistoryAction();
+    }
+    e.preventDefault();
+    e.stopPropagation();
+}, { capture: true, passive: false });
+
+pinchWorkspace.addEventListener("pointermove", function(e) {
+    if (e.pointerType === "touch" && activeTouchPointers.has(e.pointerId)) {
+        activeTouchPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    }
+    if (!pinchActive || activeTouchPointers.size < 2) return;
+
+    const metrics = getPinchMetrics();
+    if (!metrics) return;
+    const rect = pinchWorkspace.getBoundingClientRect();
+    const midX = metrics.midX - rect.left - rect.width / 2;
+    const midY = metrics.midY - rect.top - rect.height / 2;
+    const newScale = Math.max(MIN_VIEW_SCALE, Math.min(MAX_VIEW_SCALE, pinchStartScale * metrics.distance / pinchStartDistance));
+    viewScale = newScale;
+    viewX = midX - pinchAnchorSceneX * newScale;
+    viewY = midY - pinchAnchorSceneY * newScale;
+    updateViewport();
+    e.preventDefault();
+    e.stopPropagation();
+}, { capture: true, passive: false });
+
+function finishPinchPointer(e) {
+    if (e.pointerType === "touch") activeTouchPointers.delete(e.pointerId);
+    if (activeTouchPointers.size < 2) pinchActive = false;
+}
+pinchWorkspace.addEventListener("pointerup", finishPinchPointer, true);
+pinchWorkspace.addEventListener("pointercancel", finishPinchPointer, true);
+
+/* ---------------------------------------------------------
    空白區域拖曳
 --------------------------------------------------------- */
+
+document.getElementById("workspace").addEventListener("pointerdown", function(e) {
+    const isBlank = e.target === this || e.target === sceneCanvas;
+    if (isBlank) beginTouchLongPress(e, "blank");
+}, true);
 
 document.getElementById("workspace").addEventListener(
     "pointerdown",
@@ -7744,14 +8087,17 @@ document.getElementById("workspace").addEventListener(
          */
         const isWorkspaceBlank = e.target === this;
         const isSceneBlank = e.target === sceneCanvas;
-        if(!isWorkspaceBlank && !isSceneBlank) return;
+        const hitObjectElement = e.target && e.target.closest ? e.target.closest(".scene-object") : null;
+        const hitObject = hitObjectElement ? getObjects().find(item => item.id === hitObjectElement.dataset.id) : null;
+        const isLockedObject = !!hitObject && hitObject.locked === true;
+        if(!isWorkspaceBlank && !isSceneBlank && !isLockedObject) return;
 
         if(e.pointerType === "mouse" && e.button !== 0) return;
 
         // 一般模式下，點擊／開始拖動畫布的空白處就立即取消圖片選取。
         // 在 pointerdown 處理，避免工作區的 pointer capture 令後續 click
         // 無法觸發 scene 上原有的空白處取消選取事件。
-        if (!multiSelectMode) {
+        if (!multiSelectMode && !isLockedObject) {
             selectedId = null;
             selectedIds.clear();
             editor.style.display = "none";
