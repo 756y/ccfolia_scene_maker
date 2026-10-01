@@ -269,6 +269,12 @@ button.full{width:100%}
 }
 #viewportControls button{height:30px;min-width:30px;padding:0 8px;background:#202c3c;border:1px solid #3a4b62;border-radius:6px}
 #viewportControls button:hover{background:#2d3d53}
+#zoomSlider{min-width:70px;max-width:100px}
+#redoButton:disabled{opacity:.42;cursor:not-allowed;background:#1a2432;border-color:#2b3749}
+#multiSelectButton.active{background:#2d72c8;border-color:#438de7;box-shadow:0 0 0 2px rgba(67,141,231,.22);color:#fff}
+#selectionMarquee{position:absolute;z-index:2000;display:none;pointer-events:none;border:1.5px solid rgba(82,166,255,.95);background:rgba(56,139,255,.20);border-radius:2px;box-shadow:0 0 0 1px rgba(10,40,80,.25) inset}
+#workspace.multi-select-active{cursor:crosshair}
+#workspace.multi-select-active .scene-object{cursor:crosshair}
 #undoButton{min-width:34px;font-size:15px}
 #undoButton:disabled{opacity:.42;cursor:not-allowed;background:#1a2432;border-color:#2b3749}
 #autosaveStatus{font-size:9px;color:#718097;min-width:72px;text-align:center}
@@ -503,13 +509,13 @@ button.full{width:100%}
     <div id="viewportControls">
 
         <button id="undoButton" title="返回上一步（Ctrl+Z）" disabled>↶</button>
+        <button id="redoButton" title="重做下一步（Ctrl+Y）" disabled>↷</button>
+        <button id="multiSelectButton" title="多選元件：可選取並一起移動未鎖定的元件">▧+</button>
         <span id="autosaveStatus" title="每 10 秒自動儲存">自動儲存：待機</span>
 
-        <button id="zoomOut">−</button>
+        <input id="zoomSlider" type="range" min="10" max="200" step="1" value="100" aria-label="畫布縮放" title="拖曳調整畫布縮放" style="width:92px;height:5px;accent-color:var(--accent);cursor:pointer;margin:0 3px">
 
         <span id="zoomValue">100%</span>
-
-        <button id="zoomIn">＋</button>
 
         <button id="fitCanvas">適合畫布</button>
 
@@ -678,6 +684,10 @@ const sharedObjects = [];
 let currentSceneId = null;
 
 let selectedId = null;
+let multiSelectMode = false;
+const selectedIds = new Set();
+let dragGroup = [];
+let dragGroupStarts = [];
 
 
 /* =========================================================
@@ -694,6 +704,7 @@ const AUTOSAVE_STORE_NAME = "editor_state";
 const AUTOSAVE_KEY = "latest";
 
 const historyStack = [];
+const redoStack = [];
 let historyLastSnapshot = null;
 let historyLastSignature = "";
 let historyActionBaseline = null;
@@ -703,6 +714,8 @@ let historyNextImageId = 1;
 let autosaveBusy = false;
 
 const undoButton = document.getElementById("undoButton");
+const redoButton = document.getElementById("redoButton");
+const redoButtonUnusedGuard = null;
 const autosaveStatus = document.getElementById("autosaveStatus");
 
 function getHistoryImageId(value) {
@@ -746,13 +759,19 @@ function editorStateSignature(state = null) {
 }
 
 function updateUndoButton() {
-    if (!undoButton) return;
-    undoButton.disabled = historyStack.length === 0;
-    undoButton.title = historyStack.length ? `返回上一步（Ctrl+Z）· 尚可返回 ${historyStack.length} 步` : "返回上一步（Ctrl+Z）";
+    if (undoButton) {
+        undoButton.disabled = historyStack.length === 0;
+        undoButton.title = historyStack.length ? `返回上一步（Ctrl+Z）· 尚可返回 ${historyStack.length} 步` : "返回上一步（Ctrl+Z）";
+    }
+    if (redoButton) {
+        redoButton.disabled = redoStack.length === 0;
+        redoButton.title = redoStack.length ? `重做下一步（Ctrl+Y）· 尚可前進 ${redoStack.length} 步` : "重做下一步（Ctrl+Y）";
+    }
 }
 
 function resetHistoryBaseline() {
     historyStack.length = 0;
+    redoStack.length = 0;
     historyActionBaseline = null;
     historyActionActive = false;
     historyLastSnapshot = cloneEditorState();
@@ -771,6 +790,7 @@ function finishHistoryAction() {
     const currentSignature = editorStateSignature();
     if (historyActionBaseline && currentSignature !== editorStateSignature(historyActionBaseline)) {
         historyStack.push(historyActionBaseline);
+        redoStack.length = 0;
         if (historyStack.length > MAX_HISTORY) historyStack.shift();
     }
     historyActionBaseline = null;
@@ -785,6 +805,7 @@ function recordHistoryAfterRender() {
     if (historyActionActive) return;
     if (historyLastSnapshot && currentSignature !== historyLastSignature) {
         historyStack.push(historyLastSnapshot);
+        redoStack.length = 0;
         if (historyStack.length > MAX_HISTORY) historyStack.shift();
     }
     historyLastSnapshot = cloneEditorState();
@@ -807,6 +828,7 @@ function restoreEditorState(state) {
     sharedObjects.splice(0, sharedObjects.length, ...restored.sharedObjects);
     currentSceneId = restored.currentSceneId;
     selectedId = null;
+    selectedIds.clear();
     loadCurrentScene();
     renderSceneList();
     render();
@@ -815,8 +837,21 @@ function restoreEditorState(state) {
 
 function undoLastAction() {
     if (!historyStack.length || historyActionActive) return;
+    redoStack.push(cloneEditorState());
     const previousState = historyStack.pop();
     restoreEditorState(previousState);
+    historyLastSnapshot = cloneEditorState();
+    historyLastSignature = editorStateSignature();
+    updateUndoButton();
+    saveEditorStateToStorage();
+}
+
+function redoLastAction() {
+    if (!redoStack.length || historyActionActive) return;
+    historyStack.push(cloneEditorState());
+    if (historyStack.length > MAX_HISTORY) historyStack.shift();
+    const nextState = redoStack.pop();
+    restoreEditorState(nextState);
     historyLastSnapshot = cloneEditorState();
     historyLastSignature = editorStateSignature();
     updateUndoButton();
@@ -920,13 +955,15 @@ async function loadEditorStateFromStorage(){
 setInterval(saveEditorStateToStorage,AUTOSAVE_INTERVAL);
 
 document.addEventListener("keydown",function(e){
-    const isUndoShortcut=(e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="z"&&!e.altKey;
-    if(!isUndoShortcut)return;
-    e.preventDefault();
-    undoLastAction();
+    const key = e.key.toLowerCase();
+    const modifier = (e.ctrlKey || e.metaKey) && !e.altKey;
+    if (!modifier) return;
+    if (key === "z" && !e.shiftKey) { e.preventDefault(); undoLastAction(); }
+    else if (key === "y" || (key === "z" && e.shiftKey)) { e.preventDefault(); redoLastAction(); }
 });
 
 if(undoButton)undoButton.addEventListener("click",undoLastAction);
+if(redoButton)redoButton.addEventListener("click",redoLastAction);
 
 
 /* ==========================================
@@ -1163,26 +1200,16 @@ updateForegroundStyle();
 
     /* 背景 */
     if (scene.backgroundData) {
-
-        background.src =
-            scene.backgroundData;
-
-    } else {
-
+        if (background.getAttribute("src") !== scene.backgroundData) background.src = scene.backgroundData;
+    } else if (background.hasAttribute("src")) {
         background.removeAttribute("src");
-
     }
 
     /* 前景 */
     if (scene.foregroundData) {
-
-        foreground.src =
-            scene.foregroundData;
-
-    } else {
-
+        if (foreground.getAttribute("src") !== scene.foregroundData) foreground.src = scene.foregroundData;
+    } else if (foreground.hasAttribute("src")) {
         foreground.removeAttribute("src");
-
     }
 
     editor.style.display = "none";
@@ -2693,103 +2720,70 @@ document.getElementById("clearForeground")
 
 function render() {
 
-    objectsContainer.innerHTML = "";
+    /*
+     * 重用現有圖片 DOM，而不是每次 render 都清空再重建。
+     * 拖曳、框選、復原/重做時可避免大型圖片重新載入造成短暫空白/閃爍。
+     */
+    const existingById = new Map(
+        Array.from(objectsContainer.querySelectorAll(".scene-object"))
+            .map(el => [el.dataset.id, el])
+    );
+    const liveIds = new Set();
     
-    /* ==========================================
-   舊版畫面元件補上預設狀態
-========================================== */
-
-sharedObjects.forEach(object => {
-
-    if (typeof object.visible !== "boolean") {
-        object.visible = true;
-    }
-
-    if (typeof object.locked !== "boolean") {
-        object.locked = false;
-    }
-
-});
+    /* 舊版畫面元件補上預設狀態 */
+    sharedObjects.forEach(object => {
+        if (typeof object.visible !== "boolean") object.visible = true;
+        if (typeof object.locked !== "boolean") object.locked = false;
+    });
 
     getObjects().forEach(object => {
-
-        const img = document.createElement("img");
-
-        img.className = "scene-object";
-
-        img.src = object.imageUrl;
-
-        img.dataset.id = object.id;
-
-        img.style.left =
-            object.x + "px";
-
-        img.style.top =
-            object.y + "px";
-
-        img.style.width =
-            object.width + "px";
-
-        img.style.height =
-            object.height + "px";
-
-        img.style.zIndex =
-            Number(object.z) + 1;
-
-        img.style.opacity =
-            object.opacity;
-            
-        img.style.visibility =
-    object.type === "sceneMarker"
-        ? "visible"
-        : (
-            object.visible !== false
-                ? "visible"
-                : "hidden"
-        );
-
-        img.style.transform =
-            "rotate(" +
-            object.angle +
-            "deg) " +
-            "scale(" +
-            (object.flipX ? -1 : 1) +
-            "," +
-            (object.flipY ? -1 : 1) +
-            ")";
-
-        img.addEventListener(
-            "pointerdown",
-            startDrag
-        );
-
-        img.addEventListener(
-            "click",
-            function(e) {
-
+        let img = existingById.get(object.id);
+        if (!img) {
+            img = document.createElement("img");
+            img.className = "scene-object";
+            img.dataset.id = object.id;
+            img.addEventListener("pointerdown", startDrag);
+            img.addEventListener("click", function(e) {
                 e.stopPropagation();
+                const currentObject = getObjects().find(item => item.id === img.dataset.id);
+                if (!currentObject) return;
+                if (multiSelectMode) {
+                    if (currentObject.locked === true) return;
+                    selectedId = currentObject.id;
+                    selectObject(currentObject.id);
+                    updateSelectionVisual();
+                } else {
+                    selectedIds.clear();
+                    selectedIds.add(currentObject.id);
+                    selectObject(currentObject.id);
+                }
+            });
+        }
+        liveIds.add(object.id);
 
-                selectObject(object.id);
-
-            }
-        );
-
+        // 只有圖片來源真的改變時才更新 src，避免重新解碼造成閃白。
+        if (img.getAttribute("src") !== object.imageUrl) img.src = object.imageUrl;
+        img.style.left = object.x + "px";
+        img.style.top = object.y + "px";
+        img.style.width = object.width + "px";
+        img.style.height = object.height + "px";
+        img.style.zIndex = Number(object.z) + 1;
+        img.style.opacity = object.opacity;
+        img.style.visibility = object.type === "sceneMarker" ? "visible" : (object.visible !== false ? "visible" : "hidden");
+        img.style.transform = "rotate(" + object.angle + "deg) scale(" + (object.flipX ? -1 : 1) + "," + (object.flipY ? -1 : 1) + ")";
+        // appendChild 既有節點只會調整順序，不會重載圖片；可維持 z 順序。
         objectsContainer.appendChild(img);
+    });
 
+    existingById.forEach((el, id) => {
+        if (!liveIds.has(id)) el.remove();
     });
 
     updateList();
-
     updateSelectionVisual();
-
     updateDropHint();
-
-    /* 更新圖片上方的快捷工具列 */
-updateObjectQuickToolbar();
-
-/* 更新圖片縮放控制點 */
-renderResizeHandles();
-
+    updateObjectQuickToolbar();
+    renderResizeHandles();
 }
 
 /* =========================================================
@@ -4794,7 +4788,7 @@ function updateSelectionVisual() {
 
             el.classList.toggle(
                 "selected",
-                el.dataset.id === selectedId
+                selectedIds.has(el.dataset.id) || el.dataset.id === selectedId
             );
 
         });
@@ -5353,27 +5347,31 @@ function startDrag(e) {
     const id =
         e.currentTarget.dataset.id;
 
-    selectObject(id);
+    const clickedObject = getObjects().find(item => item.id === id);
+    if (!clickedObject || clickedObject.locked === true) return;
 
-    const object =
-        getSelectedObject();
-
+    if (multiSelectMode) {
+        if (!selectedIds.has(id)) {
+            selectedIds.clear();
+            selectedIds.add(id);
+        }
+        selectedId = id;
+        selectObject(id);
+        updateSelectionVisual();
+        dragGroup = getObjects().filter(item => selectedIds.has(item.id) && item.locked !== true);
+    } else {
+        selectedIds.clear();
+        selectedIds.add(id);
+        selectObject(id);
+        dragGroup = [clickedObject];
+    }
+    const object = clickedObject;
     if (!object) return;
 
-
-    /*
- * 所有物件鎖定後都不能拖曳
- */
-if (object.locked === true) {
-    return;
-}
-
-
     beginHistoryAction();
-
     dragging = true;
-
     dragObject = object;
+    dragGroupStarts = dragGroup.map(item => ({ id: item.id, x: item.x, y: item.y }));
 
 
     /*
@@ -5454,25 +5452,20 @@ document.addEventListener(
             viewScale;
 
 
-        dragObject.x =
-            objectStartX + dx;
-
-        dragObject.y =
-            objectStartY + dy;
+        dragGroup.forEach(item => {
+            const start = dragGroupStarts.find(entry => entry.id === item.id);
+            if (!start) return;
+            item.x = start.x + dx;
+            item.y = start.y + dy;
+        });
 
 
         /*
          * 只有勾選「對齊格線」
          * 才自動吸附。
          */
-        if (
-            getCurrentScene()?.alignWithGrid === true
-        ) {
-
-            snapObjectToGrid(
-                dragObject
-            );
-
+        if (getCurrentScene()?.alignWithGrid === true) {
+            dragGroup.forEach(item => snapObjectToGrid(item));
         }
         
         /* 即時更新右側 X / Y */
@@ -5521,6 +5514,8 @@ function stopDrag(e) {
 
     dragging = false;
     dragObject = null;
+    dragGroup = [];
+    dragGroupStarts = [];
 
     finishHistoryAction();
 }
@@ -5551,6 +5546,11 @@ document.addEventListener(
 
 document.getElementById("scene")
 .addEventListener("click", function(e) {
+
+    if (multiSelectMode) {
+        e.stopPropagation();
+        return;
+    }
 
     if (
         e.target === this ||
@@ -7071,6 +7071,7 @@ async function initializeEditorToBlank() {
     selectedId = null;
 
     historyStack.length = 0;
+    redoStack.length = 0;
     historyActionBaseline = null;
     historyActionActive = false;
 
@@ -7105,6 +7106,118 @@ async function initializeEditor() {
 
     if (restored) setAutosaveStatus("自動儲存：已恢復",true);
     else setAutosaveStatus("自動儲存：待機");
+}
+
+/* 框選功能：滑鼠與手機觸控皆可在畫布空白處拖曳框選 */
+const selectionMarquee = document.createElement("div");
+selectionMarquee.id = "selectionMarquee";
+selectionMarquee.setAttribute("aria-hidden", "true");
+document.getElementById("workspace").appendChild(selectionMarquee);
+let marqueeSelecting = false;
+let marqueePointerId = null;
+let marqueeStartX = 0;
+let marqueeStartY = 0;
+let marqueeMoved = false;
+
+function isBlankCanvasTarget(target, workspace) {
+    return target === workspace || target === sceneCanvas ||
+        target === objectsContainer || target === background ||
+        target === foreground || target === sceneGrid;
+}
+
+function updateMarquee(clientX, clientY) {
+    const workspace = document.getElementById("workspace");
+    const rect = workspace.getBoundingClientRect();
+    const left = Math.min(marqueeStartX, clientX);
+    const top = Math.min(marqueeStartY, clientY);
+    const width = Math.abs(clientX - marqueeStartX);
+    const height = Math.abs(clientY - marqueeStartY);
+    selectionMarquee.style.left = (left - rect.left) + "px";
+    selectionMarquee.style.top = (top - rect.top) + "px";
+    selectionMarquee.style.width = width + "px";
+    selectionMarquee.style.height = height + "px";
+    selectionMarquee.style.display = "block";
+}
+
+const workspaceForMarquee = document.getElementById("workspace");
+workspaceForMarquee.addEventListener("pointerdown", function(e) {
+    if (!multiSelectMode || !isBlankCanvasTarget(e.target, this)) return;
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    marqueeSelecting = true;
+    marqueePointerId = e.pointerId;
+    marqueeStartX = e.clientX;
+    marqueeStartY = e.clientY;
+    marqueeMoved = false;
+    selectedId = null;
+    selectedIds.clear();
+    updateSelectionVisual();
+    updateMarquee(e.clientX, e.clientY);
+    this.classList.add("multi-select-active");
+    try { this.setPointerCapture(e.pointerId); } catch (_) {}
+}, true);
+
+document.addEventListener("pointermove", function(e) {
+    if (!marqueeSelecting || (marqueePointerId !== null && e.pointerId !== marqueePointerId)) return;
+    e.preventDefault();
+    if (Math.abs(e.clientX - marqueeStartX) + Math.abs(e.clientY - marqueeStartY) > 4) marqueeMoved = true;
+    updateMarquee(e.clientX, e.clientY);
+    const box = {
+        left: Math.min(marqueeStartX, e.clientX),
+        top: Math.min(marqueeStartY, e.clientY),
+        right: Math.max(marqueeStartX, e.clientX),
+        bottom: Math.max(marqueeStartY, e.clientY)
+    };
+    selectedIds.clear();
+    document.querySelectorAll(".scene-object").forEach(el => {
+        const item = getObjects().find(obj => obj.id === el.dataset.id);
+        if (!item || item.locked === true || item.visible === false) return;
+        const r = el.getBoundingClientRect();
+        if (r.right >= box.left && r.left <= box.right && r.bottom >= box.top && r.top <= box.bottom) {
+            selectedIds.add(item.id);
+        }
+    });
+    updateSelectionVisual();
+}, { passive: false });
+
+function finishMarquee(e) {
+    if (!marqueeSelecting || (e && marqueePointerId !== null && e.pointerId !== undefined && e.pointerId !== marqueePointerId)) return;
+    const workspace = document.getElementById("workspace");
+    marqueeSelecting = false;
+    marqueePointerId = null;
+    selectionMarquee.style.display = "none";
+    workspace.classList.toggle("multi-select-active", multiSelectMode);
+    if (e && e.pointerId !== undefined) {
+        try { workspace.releasePointerCapture(e.pointerId); } catch (_) {}
+    }
+    updateSelectionVisual();
+}
+document.addEventListener("pointerup", finishMarquee, true);
+document.addEventListener("pointercancel", finishMarquee, true);
+
+const multiSelectButton = document.getElementById("multiSelectButton");
+if (multiSelectButton) {
+    multiSelectButton.setAttribute("aria-pressed", "false");
+    multiSelectButton.addEventListener("click", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        multiSelectMode = !multiSelectMode;
+        // 明確同步按鈕狀態，點第二次立即移除藍色，不依賴畫布後續點擊。
+        this.classList.toggle("active", multiSelectMode);
+        this.setAttribute("aria-pressed", multiSelectMode ? "true" : "false");
+        this.title = multiSelectMode ? "多選模式已開啟：在畫布空白處拖曳框選未鎖定元件，放開手指後即可一起移動" : "多選元件：可選取並一起移動未鎖定的元件";
+        const workspace = document.getElementById("workspace");
+        workspace.classList.toggle("multi-select-active", multiSelectMode);
+        if (!multiSelectMode) {
+            marqueeSelecting = false;
+            marqueePointerId = null;
+            selectionMarquee.style.display = "none";
+            selectedIds.clear();
+            if (selectedId) selectedIds.add(selectedId);
+        }
+        updateSelectionVisual();
+    });
 }
 
 initializeEditor();
@@ -7148,12 +7261,9 @@ function updateViewport(){
     scene.style.transform =
         `translate(${viewX}px, ${viewY}px) scale(${viewScale})`;
 
-    if(zoomValue){
-
-        zoomValue.textContent =
-            Math.round(viewScale * 100) + "%";
-
-    }
+    if(zoomValue){ zoomValue.textContent = Math.round(viewScale * 100) + "%"; }
+    const zoomSlider = document.getElementById("zoomSlider");
+    if (zoomSlider) zoomSlider.value = String(Math.round(viewScale * 100));
 
 }
 
@@ -7307,33 +7417,10 @@ document
 );
 
 
-/* ---------------------------------------------------------
-   放大
---------------------------------------------------------- */
-
-document
-.getElementById("zoomIn")
-.addEventListener("click", function(){
-
-    setViewport(
-        viewScale * 1.1
-    );
-
-});
-
-
-/* ---------------------------------------------------------
-   縮小
---------------------------------------------------------- */
-
-document
-.getElementById("zoomOut")
-.addEventListener("click", function(){
-
-    setViewport(
-        viewScale * 0.9
-    );
-
+/* 縮放滑桿：保留原本約略相同的控制區寬度 */
+const zoomSlider = document.getElementById("zoomSlider");
+if (zoomSlider) zoomSlider.addEventListener("input", function () {
+    setViewport(Number(this.value) / 100);
 });
 
 
