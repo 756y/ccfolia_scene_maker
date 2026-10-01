@@ -6921,10 +6921,35 @@ async function readZipEntries(arrayBuffer) {
 }
 
 function zipImageToDataURL(bytes, filename) {
-    const ext = (filename.split(".").pop() || "").toLowerCase();
-    const mime = ext === "jpg" || ext === "jpeg" ? "image/jpeg" :
-        ext === "webp" ? "image/webp" : ext === "gif" ? "image/gif" :
-        ext === "svg" ? "image/svg+xml" : "image/png";
+    // 以實際檔案內容判斷格式，不以副檔名猜測；避免把 ZIP 內的 XML 錯誤回應當成 PNG。
+    if (!(bytes instanceof Uint8Array) || bytes.length === 0) return null;
+
+    let mime = null;
+    const startsWith = (signature) => signature.every((value, index) => bytes[index] === value);
+
+    if (startsWith([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])) {
+        mime = "image/png";
+    } else if (startsWith([0xFF, 0xD8, 0xFF])) {
+        mime = "image/jpeg";
+    } else if (startsWith([0x47, 0x49, 0x46, 0x38, 0x37, 0x61]) || startsWith([0x47, 0x49, 0x46, 0x38, 0x39, 0x61])) {
+        mime = "image/gif";
+    } else if (bytes.length >= 12 &&
+        bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46 &&
+        bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50) {
+        mime = "image/webp";
+    } else {
+        // SVG 是文字格式，僅接受真正含有 <svg> 根標籤的內容；拒絕 XML/HTML 錯誤頁。
+        const head = new TextDecoder().decode(bytes.subarray(0, Math.min(bytes.length, 4096)))
+            .replace(/^\uFEFF/, "").trimStart();
+        if (/<svg(?:\s|>)/i.test(head) &&
+            /^(?:<\?xml[^>]*>\s*)?(?:<!--[^]*?-->\s*)*<svg(?:\s|>)/i.test(head)) {
+            mime = "image/svg+xml";
+        }
+    }
+
+    // 非支援圖片（例如資源伺服器回傳的 <Error><Code>NoSuchKey</Code>）不匯入。
+    if (!mime) return null;
+
     let binary = "";
     for (let i = 0; i < bytes.length; i += 0x8000) {
         binary += String.fromCharCode(...bytes.subarray(i, Math.min(i + 0x8000, bytes.length)));
