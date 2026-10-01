@@ -51,6 +51,14 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 #sidebar::-webkit-scrollbar{width:7px}
 #sidebar::-webkit-scrollbar-thumb{background:#435269;border-radius:10px}
 #sidebar::-webkit-scrollbar-track{background:transparent}
+#sidebar{transition:width .2s ease,flex-basis .2s ease}
+#sidebar.collapsed{width:58px;flex-basis:58px;padding:10px 7px;overflow:hidden}
+#sidebar.collapsed > :not(.sidebar-header){display:none!important}
+#sidebar.collapsed .sidebar-header{padding:4px 0 10px;flex-direction:column;gap:8px;border-bottom:0;margin:0}
+#sidebar.collapsed .sidebar-title,#sidebar.collapsed #openSettings{display:none!important}
+#sidebar.collapsed .app-logo{width:38px;height:38px}
+#sidebarToggle{flex:0 0 auto;white-space:nowrap;padding:7px 9px}
+#sidebar.collapsed #sidebarToggle{width:40px;padding:7px 0}
 
 .sidebar-header{
     display:flex;
@@ -359,6 +367,7 @@ button.full{width:100%}
             <span>Scene Builder · 快速編輯工作區</span>
         </div>
         <button id="openSettings" type="button" title="場景設定" style="margin-left:auto;white-space:nowrap">⚙ 設定</button>
+        <button id="sidebarToggle" type="button" title="收起側邊欄" aria-label="收起側邊欄" aria-expanded="true">‹ 收起</button>
     </div>
 
     <!-- 新增元件 -->
@@ -388,6 +397,7 @@ button.full{width:100%}
     <input type="file" id="backgroundImageInput" accept="image/*" style="display:none;">
     <input type="file" id="foregroundImageInput" accept="image/*" style="display:none;">
     <input type="file" id="replaceImageInput" accept="image/*" style="display:none;">
+    <input type="file" id="importVIPInput" accept=".zip,application/zip,application/x-zip-compressed" style="display:none;">
 
     <!-- 元件 -->
     <section class="panel-section">
@@ -450,7 +460,7 @@ button.full{width:100%}
 
     <!-- 場景 -->
     <section class="panel-section">
-        <div class="section-title"><span><span class="section-icon">▣</span>場景</span><small>編號保留</small></div>
+        <div class="section-title"><span><span class="section-icon">▣</span>場景</span><small id="sceneTotalCount">總場景數：0</small></div>
         <div class="section-body">
             <div id="sceneList"></div>
             <div class="row">
@@ -476,6 +486,7 @@ button.full{width:100%}
         <div class="section-title"><span><span class="section-icon">⇩</span>輸出</span><small>完成後下載</small></div>
         <div class="section-body">
             <div class="export-grid">
+                <button id="importVIP" class="export-button">⇧ 匯入 ZIP</button>
                 <button id="exportZIP" class="export-button primary">⇩ Room ZIP</button>
                 <button id="exportPNG" class="export-button">▧ PNG</button>
             </div>
@@ -1332,6 +1343,8 @@ function renderSceneList() {
 
     const list = document.getElementById("sceneList");
     list.innerHTML = "";
+    const sceneTotalCount = document.getElementById("sceneTotalCount");
+    if (sceneTotalCount) sceneTotalCount.textContent = `總場景數：${scenes.length}`;
 
     scenes.forEach((scene, index) => {
         const div = document.createElement("div");
@@ -1357,11 +1370,11 @@ function renderSceneList() {
         const thumb = document.createElement("img");
         thumb.className = "scene-item-thumb";
         thumb.alt = "";
-        if (scene.foregroundData) {
-            thumb.src = scene.foregroundData;
+        const previewImage = scene.foregroundData || scene.backgroundData;
+        if (previewImage) {
+            thumb.src = previewImage;
             thumb.style.visibility = "visible";
         } else {
-            // 沒有前景圖時保留縮圖位置，但顯示空白，不以其他圖片替代。
             thumb.removeAttribute("src");
             thumb.style.visibility = "hidden";
         }
@@ -6627,6 +6640,208 @@ const y =
   ZIP 匯出
   =========================================================
 */
+
+
+/* =========================================================
+   ZIP / Cocofolia Room ZIP 匯入
+   支援 ZIP Store 與 Deflate，讀取 __data.json 及資源圖片。
+   匯入採整份還原，會取代編輯器目前的場景與元件。
+   ========================================================= */
+document.getElementById("importVIP").addEventListener("click", () => {
+    document.getElementById("importVIPInput").click();
+});
+
+// 側邊功能欄收合；按鈕固定放在「設定」旁，收合後保留展開按鈕。
+(function setupSidebarToggle() {
+    const sidebar = document.getElementById("sidebar");
+    const toggle = document.getElementById("sidebarToggle");
+    if (!sidebar || !toggle) return;
+    toggle.addEventListener("click", () => {
+        const collapsed = sidebar.classList.toggle("collapsed");
+        toggle.textContent = collapsed ? "›" : "‹ 收起";
+        toggle.title = collapsed ? "展開側邊欄" : "收起側邊欄";
+        toggle.setAttribute("aria-label", toggle.title);
+        toggle.setAttribute("aria-expanded", String(!collapsed));
+        requestAnimationFrame(() => {
+            if (typeof updateViewport === "function") updateViewport();
+            if (typeof fitCanvas === "function") fitCanvas();
+        });
+    });
+})();
+
+async function readZipEntries(arrayBuffer) {
+    const bytes = new Uint8Array(arrayBuffer);
+    const view = new DataView(arrayBuffer);
+    const decoder = new TextDecoder();
+    let eocd = -1;
+    for (let i = bytes.length - 22; i >= Math.max(0, bytes.length - 65558); i--) {
+        if (view.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+    }
+    if (eocd < 0) throw new Error("檔案不是有效的 ZIP 檔案。");
+    const count = view.getUint16(eocd + 10, true);
+    let offset = view.getUint32(eocd + 16, true);
+    const entries = new Map();
+    for (let i = 0; i < count; i++) {
+        if (view.getUint32(offset, true) !== 0x02014b50) throw new Error("ZIP 中央目錄格式不正確。");
+        const method = view.getUint16(offset + 10, true);
+        const compressedSize = view.getUint32(offset + 20, true);
+        const nameLength = view.getUint16(offset + 28, true);
+        const extraLength = view.getUint16(offset + 30, true);
+        const commentLength = view.getUint16(offset + 32, true);
+        const localOffset = view.getUint32(offset + 42, true);
+        const name = decoder.decode(bytes.slice(offset + 46, offset + 46 + nameLength));
+        const localNameLength = view.getUint16(localOffset + 26, true);
+        const localExtraLength = view.getUint16(localOffset + 28, true);
+        const dataStart = localOffset + 30 + localNameLength + localExtraLength;
+        const compressed = bytes.slice(dataStart, dataStart + compressedSize);
+        let content;
+        if (method === 0) content = compressed;
+        else if (method === 8) {
+            if (typeof DecompressionStream === "undefined") throw new Error("此瀏覽器不支援 ZIP 解壓縮，請改用支援 Deflate 的新版瀏覽器。");
+            let stream;
+            try { stream = new Blob([compressed]).stream().pipeThrough(new DecompressionStream("deflate-raw")); }
+            catch (_) { throw new Error("無法解壓此 ZIP 檔案（Deflate 格式不受目前瀏覽器支援）。"); }
+            content = new Uint8Array(await new Response(stream).arrayBuffer());
+        } else {
+            throw new Error("ZIP 內含不支援的壓縮方式：" + method);
+        }
+        entries.set(name, content);
+        offset += 46 + nameLength + extraLength + commentLength;
+    }
+    return entries;
+}
+
+function zipImageToDataURL(bytes, filename) {
+    const ext = (filename.split(".").pop() || "").toLowerCase();
+    const mime = ext === "jpg" || ext === "jpeg" ? "image/jpeg" :
+        ext === "webp" ? "image/webp" : ext === "gif" ? "image/gif" :
+        ext === "svg" ? "image/svg+xml" : "image/png";
+    let binary = "";
+    for (let i = 0; i < bytes.length; i += 0x8000) {
+        binary += String.fromCharCode(...bytes.subarray(i, Math.min(i + 0x8000, bytes.length)));
+    }
+    return "data:" + mime + ";base64," + btoa(binary);
+}
+
+function importRoomPosition(value, dimension) {
+    const n = Number(value);
+    return Number.isFinite(n) ? n * 24 + dimension / 2 : dimension / 2;
+}
+
+async function importVIPRoom(file) {
+    const entries = await readZipEntries(await file.arrayBuffer());
+    const dataEntry = entries.get("__data.json") || entries.get("data.json");
+    if (!dataEntry) throw new Error("找不到 __data.json，這可能不是 Cocofolia Room ZIP 檔案。");
+    const roomData = JSON.parse(new TextDecoder().decode(dataEntry));
+    const entities = roomData.entities || roomData.data?.entities;
+    if (!entities || !entities.scenes || typeof entities.scenes !== "object") {
+        throw new Error("ZIP 內沒有可辨識的場景資料，未更動目前編輯內容。");
+    }
+    const resources = roomData.resources || roomData.data?.resources || {};
+    const imageCache = new Map();
+    const resolveImage = async (url) => {
+        if (!url) return null;
+        if (typeof url === "string" && /^(data:|blob:|https?:)/i.test(url)) return url;
+        const key = String(url).replace(/^\.?\//, "");
+        if (imageCache.has(key)) return imageCache.get(key);
+        const candidates = [key, decodeURIComponent(key), key.split("/").pop()];
+        let foundName = candidates.find(n => entries.has(n));
+        if (!foundName) {
+            const resourceKeys = Object.keys(resources);
+            const matched = resourceKeys.find(k => k === key || k.endsWith("/" + key) || k.split("/").pop() === key.split("/").pop());
+            if (matched) foundName = candidates.find(n => entries.has(n)) || (entries.has(matched) ? matched : null);
+        }
+        if (!foundName) return null;
+        const dataURL = zipImageToDataURL(entries.get(foundName), foundName);
+        imageCache.set(key, dataURL);
+        return dataURL;
+    };
+    const sourceScenes = Object.entries(entities.scenes).map(([id, scene]) => ({...scene, id}))
+        .sort((a,b) => (Number(a.order) || 0) - (Number(b.order) || 0));
+    if (!sourceScenes.length) throw new Error("ZIP 中沒有場景。");
+    const sceneWidth = 1920, sceneHeight = 1080;
+    const importedShared = [];
+    const itemEntities = entities.items || {};
+    for (const [id, item] of Object.entries(itemEntities)) {
+        const imageUrl = await resolveImage(item.imageUrl);
+        if (!imageUrl) continue;
+        importedShared.push({
+            id: createId(), name: item.memo || item.name || ("畫面元件 " + (importedShared.length + 1)),
+            imageUrl, x: importRoomPosition(item.x, sceneWidth), y: importRoomPosition(item.y, sceneHeight),
+            width: Math.max(1, Number(item.width) * 24 || 24), height: Math.max(1, Number(item.height) * 24 || 24),
+            z: Number(item.z) || 0, angle: Number(item.angle) || 0, opacity: 1,
+            flipX: false, flipY: false, visible: item.visible !== false && item.active !== false,
+            locked: item.locked === true, type: "object"
+        });
+    }
+    const importedScenes = [];
+    for (const source of sourceScenes) {
+        const backgroundData = await resolveImage(source.backgroundUrl);
+        const foregroundData = await resolveImage(source.foregroundUrl);
+        const markers = [];
+        for (const [id, marker] of Object.entries(source.markers || {})) {
+            const imageUrl = await resolveImage(marker.imageUrl);
+            if (!imageUrl) continue;
+            markers.push({
+                id: createId(), name: marker.text || ("場景標誌 " + (markers.length + 1)),
+                imageUrl, x: importRoomPosition(marker.x, sceneWidth), y: importRoomPosition(marker.y, sceneHeight),
+                width: Math.max(1, Number(marker.width) * 24 || 24), height: Math.max(1, Number(marker.height) * 24 || 24),
+                z: Number(marker.z) || 0, angle: Number(marker.angle) || 0, opacity: 1,
+                flipX: false, flipY: false, visible: true, locked: marker.locked === true, type: "sceneMarker"
+            });
+        }
+        // ZIP 以前景欄位記錄尺寸（格數）；同時兼容其他版本可能使用的欄位名稱。
+        const rawForegroundWidth = source.fieldWidth ?? source.foregroundWidth ?? source.field?.width ?? source.fieldSize?.width;
+        const rawForegroundHeight = source.fieldHeight ?? source.foregroundHeight ?? source.field?.height ?? source.fieldSize?.height;
+        const foregroundWidth = Number(rawForegroundWidth);
+        const foregroundHeight = Number(rawForegroundHeight);
+        importedScenes.push({
+            id: createId(), name: source.name || ("場景 " + (importedScenes.length + 1)),
+            sceneWidth, sceneHeight, showGrid: source.displayGrid !== false,
+            backgroundData, foregroundData,
+            foregroundWidth: Number.isFinite(foregroundWidth) && foregroundWidth > 0 ? foregroundWidth : 40,
+            foregroundHeight: Number.isFinite(foregroundHeight) && foregroundHeight > 0 ? foregroundHeight : 30,
+            foregroundFit: source.fieldObjectFit !== "fill",
+            alignWithGrid: source.alignWithGrid !== false,
+            objects: markers
+        });
+    }
+    // 只有完成 ZIP、JSON 與場景解析後才替換現有資料，避免失敗時破壞工作內容。
+    historyActionActive = true;
+    scenes.splice(0, scenes.length, ...importedScenes);
+    sharedObjects.splice(0, sharedObjects.length, ...importedShared);
+    currentSceneId = importedScenes[0].id;
+    selectedId = null;
+    selectedIds.clear();
+    historyActionActive = false;
+    renderSceneList();
+    loadCurrentScene();
+    render();
+    resetHistoryBaseline();
+    await saveEditorStateToStorage();
+    document.getElementById("zipStatus").textContent =
+        "ZIP 匯入完成：" + importedScenes.length + " 個場景、" + importedShared.length + " 個畫面元件";
+}
+
+document.getElementById("importVIPInput").addEventListener("change", async function() {
+    const file = this.files && this.files[0];
+    if (!file) return;
+    const status = document.getElementById("zipStatus");
+    try {
+        status.style.color = "#7bd99a";
+        status.textContent = "正在讀取 ZIP 房間資料…";
+        await importVIPRoom(file);
+        status.style.color = "#7bd99a";
+    } catch (error) {
+        console.error("ZIP 匯入失敗：", error);
+        status.style.color = "#ff7f88";
+        status.textContent = "ZIP 匯入失敗：" + (error && error.message ? error.message : "未知錯誤");
+        alert("ZIP 匯入失敗：\n" + (error && error.message ? error.message : "未知錯誤"));
+    } finally {
+        this.value = "";
+    }
+});
+
 
 document
     .getElementById("exportZIP")
