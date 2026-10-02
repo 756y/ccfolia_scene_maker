@@ -6937,6 +6937,12 @@ function zipImageToDataURL(bytes, filename) {
         bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46 &&
         bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50) {
         mime = "image/webp";
+    } else if (bytes.length >= 2 && bytes[0] === 0x42 && bytes[1] === 0x4D) {
+        mime = "image/bmp";
+    } else if (bytes.length >= 12 &&
+        bytes[4] === 0x66 && bytes[5] === 0x74 && bytes[6] === 0x79 && bytes[7] === 0x70 &&
+        /^(?:avif|avis|mif1|msf1)$/.test(String.fromCharCode(...bytes.subarray(8, 12)))) {
+        mime = "image/avif";
     } else {
         // SVG 是文字格式，僅接受真正含有 <svg> 根標籤的內容；拒絕 XML/HTML 錯誤頁。
         const head = new TextDecoder().decode(bytes.subarray(0, Math.min(bytes.length, 4096)))
@@ -6973,21 +6979,48 @@ async function importVIPRoom(file) {
     }
     const resources = roomData.resources || roomData.data?.resources || {};
     const imageCache = new Map();
-    const resolveImage = async (url) => {
+    const importImageIssues = [];
+    const addImageIssue = (sceneName, role, filename, reason) => {
+        importImageIssues.push({ scene: sceneName || "未指定場景", role: role || "圖片", filename: filename || "(未提供檔名)", reason });
+    };
+    const verifyImageDataURL = dataURL => new Promise(resolve => {
+        if (!dataURL) { resolve(false); return; }
+        const image = new Image();
+        image.onload = () => resolve(image.naturalWidth > 0 && image.naturalHeight > 0);
+        image.onerror = () => resolve(false);
+        image.src = dataURL;
+    });
+    const resolveImage = async (url, sceneName, role) => {
         if (!url) return null;
-        if (typeof url === "string" && /^(data:|blob:|https?:)/i.test(url)) return url;
+        if (typeof url === "string" && /^(data:|blob:|https?:)/i.test(url)) {
+            const valid = await verifyImageDataURL(url);
+            if (!valid) addImageIssue(sceneName, role, url.slice(0, 100), "圖片無法解碼或內容已損毀");
+            return valid ? url : null;
+        }
         const key = String(url).replace(/^\.?\//, "");
-        if (imageCache.has(key)) return imageCache.get(key);
-        const candidates = [key, decodeURIComponent(key), key.split("/").pop()];
+        let decodedKey = key;
+        try { decodedKey = decodeURIComponent(key); } catch (_) {}
+        const candidates = [...new Set([key, decodedKey, key.split("/").pop(), decodedKey.split("/").pop()])];
         let foundName = candidates.find(n => entries.has(n));
         if (!foundName) {
             const resourceKeys = Object.keys(resources);
             const matched = resourceKeys.find(k => k === key || k.endsWith("/" + key) || k.split("/").pop() === key.split("/").pop());
             if (matched) foundName = candidates.find(n => entries.has(n)) || (entries.has(matched) ? matched : null);
         }
-        if (!foundName) return null;
-        const dataURL = zipImageToDataURL(entries.get(foundName), foundName);
-        imageCache.set(key, dataURL);
+        if (!foundName) {
+            addImageIssue(sceneName, role, key, "ZIP 內找不到對應圖片檔");
+            return null;
+        }
+        const bytes = entries.get(foundName);
+        // 不限制副檔名：依實際檔案內容辨識 PNG、JPG/JPEG、GIF、WebP、BMP、AVIF、SVG，
+        // 再交由瀏覽器實際解碼驗證；只有不是可辨識圖片或無法解碼時才列為問題。
+        if (!imageCache.has(foundName)) {
+            let dataURL = zipImageToDataURL(bytes, foundName);
+            if (dataURL && !(await verifyImageDataURL(dataURL))) dataURL = null;
+            imageCache.set(foundName, dataURL);
+        }
+        const dataURL = imageCache.get(foundName);
+        if (!dataURL) addImageIssue(sceneName, role, foundName, "不是可辨識或可解碼的圖片檔（可能是非圖片資源、格式不受瀏覽器支援或內容損毀）");
         return dataURL;
     };
     const sourceScenes = Object.entries(entities.scenes).map(([id, scene]) => ({...scene, id}))
@@ -6997,7 +7030,7 @@ async function importVIPRoom(file) {
     const importedShared = [];
     const itemEntities = entities.items || {};
     for (const [id, item] of Object.entries(itemEntities)) {
-        const imageUrl = await resolveImage(item.imageUrl);
+        const imageUrl = await resolveImage(item.imageUrl, "共用畫面元件", item.memo || item.name || id);
         if (!imageUrl) continue;
         importedShared.push({
             id: createId(), name: item.memo || item.name || ("畫面元件 " + (importedShared.length + 1)),
@@ -7010,11 +7043,12 @@ async function importVIPRoom(file) {
     }
     const importedScenes = [];
     for (const source of sourceScenes) {
-        const backgroundData = await resolveImage(source.backgroundUrl);
-        const foregroundData = await resolveImage(source.foregroundUrl);
+        const sceneName = source.name || ("場景 " + (importedScenes.length + 1));
+        const backgroundData = await resolveImage(source.backgroundUrl, sceneName, "背景");
+        const foregroundData = await resolveImage(source.foregroundUrl, sceneName, "前景");
         const markers = [];
         for (const [id, marker] of Object.entries(source.markers || {})) {
-            const imageUrl = await resolveImage(marker.imageUrl);
+            const imageUrl = await resolveImage(marker.imageUrl, sceneName, marker.text || id);
             if (!imageUrl) continue;
             markers.push({
                 id: createId(), name: marker.text || ("場景標誌 " + (markers.length + 1)),
@@ -7103,8 +7137,19 @@ async function importVIPRoom(file) {
     render();
     resetHistoryBaseline();
     await saveEditorStateToStorage();
-    document.getElementById("zipStatus").textContent =
-        "ZIP 匯入完成：" + importedScenes.length + " 個場景、" + importedShared.length + " 個畫面元件";
+    const status = document.getElementById("zipStatus");
+    status.textContent = importImageIssues.length
+        ? "ZIP 匯入完成（有 " + importImageIssues.length + " 個圖片問題）：" + importedScenes.length + " 個場景、" + importedShared.length + " 個畫面元件"
+        : "ZIP 匯入完成：" + importedScenes.length + " 個場景、" + importedShared.length + " 個畫面元件";
+    if (importImageIssues.length) {
+        const details = importImageIssues.map((issue, index) =>
+            (index + 1) + ". 場景／元件：" + issue.scene + "｜" + issue.role +
+            "\n   檔案：" + issue.filename + "\n   原因：" + issue.reason
+        ).join("\n\n");
+        alert("ZIP 已成功匯入，但有 " + importImageIssues.length + " 張圖片無法匯入：\n\n" + details);
+    } else {
+        alert("ZIP 已成功匯入！\n場景：" + importedScenes.length + " 個\n畫面元件：" + importedShared.length + " 個\n未發現圖片格式或讀取問題。");
+    }
 }
 
 document.getElementById("importVIPInput").addEventListener("change", async function() {
