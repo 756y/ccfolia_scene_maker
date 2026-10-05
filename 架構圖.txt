@@ -1,0 +1,64 @@
+場景編輯器/
+│
+├─ index.html
+│
+├─ css/
+│   ├─ base.css //全域基礎、變數、body、基本按鈕
+│   ├─ sidebar.css //左側所有控制面板
+│   ├─ workspace.css //畫布、背景、場景、物件顯示
+│   ├─ modal.css //設定視窗、複製貼上選單
+│   ├─ toolbar.css //快捷工具列、工作區提示
+│   └─ responsive.css //手機/窄螢幕調整
+│
+├─ js/
+│   │
+│   ├─ core/
+│   │   ├─ state.js
+│   │   ├─ history.js
+│   │   ├─ storage.js
+│   │   └─ utils.js
+│   │
+│   ├─ scene/
+│   │   ├─ scene-data.js
+│   │   ├─ scene-manager.js
+│   │   └─ scene-renderer.js
+│   │
+│   ├─ object/
+│   │   ├─ object-manager.js
+│   │   ├─ object-editor.js
+│   │   ├─ object-actions.js
+│   │   └─ object-renderer.js
+│   │
+│   ├─ input/
+│   │   ├─ pointer.js
+│   │   ├─ touch.js
+│   │   └─ keyboard.js
+│   │
+│   ├─ image/
+│   │   ├─ image-loader.js
+│   │   ├─ image-processor.js
+│   │   └─ image-export.js
+│   │
+│   ├─ io/
+│   │   ├─ json-import.js
+│   │   ├─ json-export.js
+│   │   ├─ roomzip-import.js
+│   │   └─ roomzip-export.js
+│   │
+│   ├─ ui/
+│   │   ├─ sidebar.js
+│   │   ├─ settings.js
+│   │   ├─ toolbar.js
+│   │   └─ modal.js
+│   │
+│   └─ app.js
+│
+├─ assets/
+│   └─ ...
+│
+├─ tools/
+│   └─ build/
+│
+└─ docs/
+    ├─ ARCHITECTURE.md
+    └─ FEATURES.md

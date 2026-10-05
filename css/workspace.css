@@ -1,0 +1,301 @@
+/* =========================================================
+   工作區
+========================================================= */
+#workspace {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  overflow: hidden;
+  touch-action: none;
+  background-color: #0d131b;
+  background-image:
+    linear-gradient(45deg, #131c27 25%, transparent 25%),
+    linear-gradient(-45deg, #131c27 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #131c27 75%),
+    linear-gradient(-45deg, transparent 75%, #131c27 75%);
+  background-size: 32px 32px;
+  background-position: 0 0, 0 16px, 16px -16px, -16px 0;
+}
+
+#workspace::before {
+  content: "工作區";
+  position: absolute;
+  top: 14px;
+  left: 16px;
+  color: #526176;
+  font-size: 10px;
+  letter-spacing: 1px;
+  pointer-events: none;
+  z-index: 2
+}
+
+#workspace {
+  cursor: grab
+}
+
+#workspace.is-panning {
+  cursor: grabbing
+}
+
+#workspace .scene-object {
+  cursor: move
+}
+
+#bottomToolbarDock {
+  position: absolute;
+  right: 16px;
+  bottom: 30px;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: calc(100% - 32px)
+}
+
+#viewportControls {
+  position: relative;
+  right: auto;
+  bottom: auto;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px;
+  background: rgba(17, 24, 34, .94);
+  border: 1px solid #344258;
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(8px)
+}
+
+#viewportControls button {
+  height: 30px;
+  min-width: 30px;
+  padding: 0 8px;
+  background: #202c3c;
+  border: 1px solid #3a4b62;
+  border-radius: 6px
+}
+
+#viewportControls button:hover {
+  background: #2d3d53
+}
+
+#zoomSlider {
+  min-width: 70px;
+  max-width: 100px
+}
+
+#redoButton:disabled {
+  opacity: .42;
+  cursor: not-allowed;
+  background: #1a2432;
+  border-color: #2b3749
+}
+
+#multiSelectButton.active {
+  background: #2d72c8;
+  border-color: #438de7;
+  box-shadow: 0 0 0 2px rgba(67, 141, 231, .22);
+  color: #fff
+}
+
+#selectionMarquee {
+  position: absolute;
+  z-index: 2000;
+  display: none;
+  pointer-events: none;
+  border: 1.5px solid rgba(82, 166, 255, .95);
+  background: rgba(56, 139, 255, .20);
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(10, 40, 80, .25) inset
+}
+
+#workspace.multi-select-active {
+  cursor: crosshair
+}
+
+#workspace.multi-select-active .scene-object {
+  cursor: crosshair
+}
+
+#undoButton {
+  min-width: 34px;
+  font-size: 15px
+}
+
+#undoButton:disabled {
+  opacity: .42;
+  cursor: not-allowed;
+  background: #1a2432;
+  border-color: #2b3749
+}
+
+#autosaveStatus {
+  position: absolute;
+  right: 18px;
+  bottom: 7px;
+  z-index: 1001;
+  font-size: 10px;
+  color: #718097;
+  min-width: 0;
+  text-align: right;
+  pointer-events: none;
+  white-space: nowrap;
+  max-width: calc(100% - 36px)
+}
+
+#objectQuickToolbar {
+  position: relative !important;
+  left: auto !important;
+  top: auto !important;
+  bottom: auto !important;
+  right: auto !important;
+  transform: none !important;
+  gap: 5px;
+  padding: 6px;
+  flex: 0 0 auto;
+  align-self: center
+}
+
+#objectQuickToolbar button {
+  width: 42px;
+  height: 42px;
+  min-height: 42px;
+  flex: 0 0 42px;
+  font-size: 20px
+}
+
+#objectQuickToolbar .quick-divider {
+  height: 30px
+}
+
+
+#zoomValue {
+  min-width: 50px;
+  text-align: center;
+  font-size: 11px;
+  color: #c4cfdd
+}
+
+#background {
+  position: absolute;
+  left: -3%;
+  top: -3%;
+  width: 106%;
+  height: 106%;
+  object-fit: cover;
+  object-position: center center;
+  pointer-events: none;
+  z-index: 0;
+  filter: blur(8px) brightness(1);
+  transform: scale(1.04);
+  opacity: 1;
+}
+
+#scene {
+  position: absolute;
+  width: 1920px;
+  height: 1080px;
+  left: 50%;
+  top: 50%;
+  margin-left: -960px;
+  margin-top: -540px;
+  background: transparent;
+  overflow: visible;
+  transform-origin: center center;
+  box-shadow: none;
+  z-index: 1
+}
+
+#objects {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1920px;
+  height: 1080px;
+  pointer-events: none
+}
+
+.scene-object {
+  position: absolute;
+  transform-origin: center center;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
+  touch-action: none;
+  cursor: move;
+  pointer-events: auto
+}
+
+.scene-object.selected {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  filter: drop-shadow(0 0 5px rgba(77, 156, 255, .25))
+}
+
+#foreground {
+  position: absolute;
+  left: 480px;
+  top: 180px;
+  width: 960px;
+  height: 720px;
+  object-fit: fill;
+  object-position: center center;
+  pointer-events: none;
+  z-index: 0
+}
+
+#sceneGrid {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1920px;
+  height: 1080px;
+  pointer-events: none;
+  z-index: 100;
+  background-image: linear-gradient(rgba(255, 255, 255, .10) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, .10) 1px, transparent 1px);
+  background-size: 24px 24px;
+  background-position: 0 12px
+}
+
+/* 縮放控制點 */
+.resize-handle {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  margin-left: -6px;
+  margin-top: -6px;
+  background: #4d9cff;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  z-index: 2000;
+  pointer-events: auto;
+  touch-action: none;
+  box-sizing: border-box;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .5)
+}
+
+.resize-handle.nw,
+.resize-handle.se {
+  cursor: nwse-resize
+}
+
+.resize-handle.ne,
+.resize-handle.sw {
+  cursor: nesw-resize
+}
+
+.resize-handle.n,
+.resize-handle.s {
+  cursor: ns-resize
+}
+
+.resize-handle.w,
+.resize-handle.e {
+  cursor: ew-resize
+}
+
+#autosaveStatus {
+  font-size: 11px
+}
