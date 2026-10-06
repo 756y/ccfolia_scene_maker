@@ -88,34 +88,15 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 #sidebar::-webkit-scrollbar{width:7px}
 #sidebar::-webkit-scrollbar-thumb{background:#435269;border-radius:10px}
 #sidebar::-webkit-scrollbar-track{background:transparent}
-#sidebar{
-    transition:width .2s ease,flex-basis .2s ease;
-}
+#sidebar{transition:width .2s ease,flex-basis .2s ease}
+#sidebar.collapsed{width:0;flex-basis:0;padding:0;overflow:hidden}
+#sidebar.collapsed > *{display:none!important}
 
-#sidebar.collapsed{
-    width:0;
-    flex-basis:0;
-    padding:0;
-    border-right:0;
-    overflow:hidden;
-}
 
-#sidebar.collapsed > *{
-    display:none!important;
-}
-
-#sidebarToggle{
-    margin-left:auto;
-    flex:0 0 auto;
-    white-space:nowrap;
-    padding:7px 10px;
-    height:38px;
-    background:#202c3c;
-    border:1px solid #3a4b62;
-    border-radius:8px;
-    color:var(--text);
-    cursor:pointer;
-}
+#sidebar.collapsed .app-logo{width:38px;height:38px}
+#sidebarToggle{margin-left:auto;flex:0 0 auto;white-space:nowrap;padding:7px 10px;height:38px;background:#202c3c;border:1px solid #3a4b62;border-radius:8px;color:var(--text);cursor:pointer}
+#sidebar.collapsed{width:0;flex-basis:0;padding:0;overflow:hidden}
+#sidebar.collapsed #sidebarToggle{width:40px;padding:7px 0}
 
 .sidebar-header{
     display:flex;
@@ -321,8 +302,9 @@ button.full{width:100%}
 .script-list::-webkit-scrollbar{width:6px}
 .script-list::-webkit-scrollbar-thumb{background:#435269;border-radius:10px}
 .script-list::-webkit-scrollbar-track{background:transparent}
-#scriptPanel{height:calc(100vh - 72px);min-height:0;display:flex;flex-direction:column;overflow:hidden}
+#scriptPanel{height:calc(100vh - 72px);min-height:0;display:flex;flex-direction:column;overflow:hidden;contain:layout paint}
 #scriptPanel .sidebar-header,#scriptPanel .panel-intro,#scriptPanel .script-toolbar{flex:0 0 auto}
+#scriptPanel .script-list{contain:layout paint}
 /* 備註／劇本文字採平面樣式，避免卡片過度立體 */
 /* 統一文字輸入框：備註、場景備註、劇本文字全部使用相同的平面外觀與完整側欄寬度 */
 .control textarea,#memoInput,#sceneTextInput,.script-title,.script-content{
@@ -369,6 +351,16 @@ button.full{width:100%}
 .script-delete:hover{background:#5a2931!important;color:#fff!important}
 .script-content{font-size:12px;resize:vertical}
 .script-content::placeholder{color:#66768b}
+.script-title-display,.script-content-preview{width:100%;box-sizing:border-box;color:#fff;background:#111923;border:1px solid #334154;border-radius:6px;font-family:inherit}
+.script-title-display{min-height:34px;padding:8px 10px;font-size:12px;font-weight:600;line-height:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.script-content-preview{min-height:92px;height:92px;padding:9px 10px;font-size:12px;line-height:1.55;white-space:pre-wrap;overflow:hidden;cursor:pointer}
+.script-edit-popover{position:fixed;z-index:1000;width:min(520px,calc(100vw - 28px));background:#172231;border:1px solid #465a73;border-radius:10px;padding:12px;box-shadow:0 12px 36px rgba(0,0,0,.38)}
+.script-edit-popover .script-edit-label{display:block;font-size:11px;color:#aebbd0;margin:0 0 5px}
+.script-edit-popover .script-edit-title,.script-edit-popover .script-edit-content{width:100%;box-sizing:border-box;color:#fff;background:#111923;border:1px solid #334154;border-radius:6px;font-family:inherit}
+.script-edit-popover .script-edit-title{height:36px;padding:9px 10px;font-size:12px;font-weight:600}
+.script-edit-popover .script-edit-content{height:180px;min-height:120px;padding:9px 10px;font-size:12px;line-height:1.55;resize:vertical}
+.script-edit-popover .script-edit-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:10px}
+.script-edit-popover .script-edit-actions button{min-width:72px}
 .script-toolbar{position:relative}
 .script-toolbar button{font-weight:700}
 .settings-side-panel .settings-heading{padding:4px 0 12px;border-bottom:1px solid var(--border-soft);margin-bottom:12px}
@@ -503,7 +495,7 @@ button.full{width:100%}
     <button class="top-nav-button" data-nav="script" type="button">劇本文字</button>
     <button class="top-nav-button" data-nav="settings" type="button">設定</button>
     <button class="top-nav-button" data-nav="other" type="button">其他</button>
-    <button id="sidebarToggle" type="button" title="收起側邊欄" aria-label="收起側邊欄" aria-expanded="true"> ‹ </button>
+    <button id="sidebarToggle" type="button" title="收起側邊欄" aria-label="收起側邊欄" aria-expanded="true">‹</button>
 </nav>
 
 <div id="appMain">
@@ -798,6 +790,11 @@ const scenes = [];
  */
 const sharedObjects = [];
 let scriptNotes = [];
+let scriptListRendered = false;
+let scriptListRenderToken = 0;
+let scriptListRenderIndex = 0;
+let scriptListIdleHandle = null;
+let scriptEditCommitTimer = null;
 let zipPreservedData = null;
 let zipOriginalZipEntries = new Map();
 
@@ -832,6 +829,7 @@ let historyActionActive = false;
 let historyImageIds = new Map();
 let historyNextImageId = 1;
 let autosaveBusy = false;
+let autosaveQueued = false;
 
 const undoButton = document.getElementById("undoButton");
 const redoButton = document.getElementById("redoButton");
@@ -1049,8 +1047,14 @@ function openAutosaveDB(){
 }
 
 async function saveEditorStateToStorage(){
-    if(autosaveBusy||!scenes.length)return;
+    if(!scenes.length)return;
+    if(autosaveBusy){
+        /* 上一次儲存尚未完成時，不丟掉這次最新修改；完成後再補存最新狀態。 */
+        autosaveQueued=true;
+        return;
+    }
     autosaveBusy=true;
+    autosaveQueued=false;
     setAutosaveStatus("自動儲存：儲存中…");
     const payload=buildPersistedState();
     try{
@@ -1073,7 +1077,13 @@ async function saveEditorStateToStorage(){
             console.error("自動儲存失敗：",fallbackError);
             setAutosaveStatus("自動儲存：空間不足");
         }
-    }finally{autosaveBusy=false;}
+    }finally{
+        autosaveBusy=false;
+        if(autosaveQueued && scenes.length){
+            autosaveQueued=false;
+            void saveEditorStateToStorage();
+        }
+    }
 }
 
 async function loadEditorStateFromStorage(){
@@ -3080,20 +3090,60 @@ function updateObjectMemoVisuals() {
 }
 function showMemoTooltip(object, x, y) {
     const box=document.getElementById("memoTooltip"); if(!box || !object || !object.name)return;
+    const target=document.querySelector(`#objects .scene-object[data-id="${CSS.escape(String(object.id))}"]`);
+    if(!target)return;
     box.textContent=object.name; box.style.display="block";
-    const pad=10, rect=box.getBoundingClientRect();
-    box.style.left=Math.min(Math.max(pad,x+12),window.innerWidth-rect.width-pad)+"px";
-    box.style.top=Math.min(Math.max(pad,y+12),window.innerHeight-rect.height-pad)+"px";
+    const pad=10, gap=8, targetRect=target.getBoundingClientRect(), rect=box.getBoundingClientRect();
+    const centerX=targetRect.left + targetRect.width/2;
+    const left=Math.min(Math.max(pad,centerX-rect.width/2),window.innerWidth-rect.width-pad);
+    const aboveTop=targetRect.top-rect.height-gap;
+    const belowTop=targetRect.bottom+gap;
+    box.style.left=left+"px";
+    box.style.top=(aboveTop>=pad ? aboveTop : Math.min(belowTop,window.innerHeight-rect.height-pad))+"px";
 }
-function hideMemoTooltip(){ const box=document.getElementById("memoTooltip"); if(box)box.style.display="none"; }
+let memoTouchShowTimer = null;
+let memoTouchHideTimer = null;
+function hideMemoTooltip(){
+    if(memoTouchShowTimer){clearTimeout(memoTouchShowTimer);memoTouchShowTimer=null;}
+    if(memoTouchHideTimer){clearTimeout(memoTouchHideTimer);memoTouchHideTimer=null;}
+    const box=document.getElementById("memoTooltip");
+    if(box)box.style.display="none";
+}
 function bindMemoTooltip(img) {
     img.addEventListener("pointerenter", e=>{ if(e.pointerType==="mouse"){ const o=getObjects().find(x=>x.id===img.dataset.id); showMemoTooltip(o,e.clientX,e.clientY); }});
     img.addEventListener("pointermove", e=>{ if(e.pointerType==="mouse"){ const o=getObjects().find(x=>x.id===img.dataset.id); if(o&&o.name)showMemoTooltip(o,e.clientX,e.clientY); }});
     img.addEventListener("pointerleave", e=>{ if(e.pointerType==="mouse")hideMemoTooltip(); });
     img.addEventListener("contextmenu", e=>{ const o=getObjects().find(x=>x.id===img.dataset.id); if(o&&o.name)showMemoTooltip(o,e.clientX,e.clientY); });
-    img.addEventListener("pointerdown", e=>{ if(e.pointerType!=="mouse"){ const o=getObjects().find(x=>x.id===img.dataset.id); if(o&&o.name) setTimeout(()=>showMemoTooltip(o,e.clientX,e.clientY),450); }});
-    img.addEventListener("pointerup", e=>{ if(e.pointerType!=="mouse") setTimeout(hideMemoTooltip,1600); });
+    img.addEventListener("pointerdown", e=>{
+        if(e.pointerType!=="mouse"){
+            if(memoTouchShowTimer)clearTimeout(memoTouchShowTimer);
+            if(memoTouchHideTimer)clearTimeout(memoTouchHideTimer);
+            const o=getObjects().find(x=>x.id===img.dataset.id);
+            if(o&&o.name) memoTouchShowTimer=setTimeout(()=>{
+                memoTouchShowTimer=null;
+                showMemoTooltip(o,e.clientX,e.clientY);
+            },450);
+        }
+    });
+    img.addEventListener("pointerup", e=>{
+        if(e.pointerType!=="mouse"){
+            if(memoTouchShowTimer){clearTimeout(memoTouchShowTimer);memoTouchShowTimer=null;}
+            if(memoTouchHideTimer)clearTimeout(memoTouchHideTimer);
+            memoTouchHideTimer=setTimeout(()=>{
+                memoTouchHideTimer=null;
+                hideMemoTooltip();
+            },180);
+        }
+    });
+    img.addEventListener("pointercancel", e=>{
+        if(e.pointerType!=="mouse")hideMemoTooltip();
+    });
 }
+
+/* 手指／滑鼠一旦離開元件或點到其他位置，備註提示立即消失。 */
+document.addEventListener("pointerdown", e=>{
+    if(!e.target.closest || !e.target.closest(".scene-object")) hideMemoTooltip();
+});
 
 /* ==========================================
    Render
@@ -5073,30 +5123,160 @@ renderResizeHandles();
     );
 
 
+// 劇本文字輸入時不要每打一個字就建立完整 History 快照並寫入 IndexedDB。
+// 停止輸入一小段時間後再一次提交，保留 Undo / 自動儲存功能並大幅降低卡頓。
+function scheduleScriptEditCommit() {
+    if (scriptEditCommitTimer !== null) clearTimeout(scriptEditCommitTimer);
+    scriptEditCommitTimer = setTimeout(() => {
+        scriptEditCommitTimer = null;
+        recordHistoryAfterRender();
+        saveEditorStateToStorage();
+    }, 350);
+}
+
+function closeScriptEditor() {
+    const editor = document.getElementById("scriptEditPopover");
+    if (editor) editor.remove();
+    document.removeEventListener("keydown", handleScriptEditorKeydown);
+}
+
+function handleScriptEditorKeydown(e) {
+    if (e.key === "Escape") closeScriptEditor();
+}
+
+function openScriptEditor(note, card) {
+    closeScriptEditor();
+
+    const editor = document.createElement("div");
+    editor.id = "scriptEditPopover";
+    editor.className = "script-edit-popover";
+    editor.innerHTML = `
+        <label class="script-edit-label" for="scriptEditTitle">標題</label>
+        <input id="scriptEditTitle" class="script-edit-title" type="text" placeholder="劇本文字標題">
+        <label class="script-edit-label" for="scriptEditContent" style="margin-top:9px">內容</label>
+        <textarea id="scriptEditContent" class="script-edit-content" placeholder="輸入劇本文字內容……"></textarea>
+        <div class="script-edit-actions">
+            <button id="scriptEditCancel" type="button">取消編輯</button>
+            <button id="scriptEditSave" class="primary" type="button">保存</button>
+        </div>
+    `;
+    document.body.appendChild(editor);
+
+    const titleInput = editor.querySelector("#scriptEditTitle");
+    const contentInput = editor.querySelector("#scriptEditContent");
+    const cancelButton = editor.querySelector("#scriptEditCancel");
+    const saveButton = editor.querySelector("#scriptEditSave");
+    titleInput.value = note.name || "";
+    contentInput.value = note.text || "";
+
+    const rect = card.getBoundingClientRect();
+    const gap = 8;
+    let left = rect.right + gap;
+    let top = rect.top;
+    const editorWidth = Math.min(520, Math.max(260, window.innerWidth - 28));
+    const estimatedHeight = Math.min(330, window.innerHeight - 28);
+    if (left + editorWidth > window.innerWidth - 14) left = Math.max(14, rect.left - editorWidth - gap);
+    if (top + estimatedHeight > window.innerHeight - 14) top = Math.max(14, window.innerHeight - estimatedHeight - 14);
+    editor.style.left = left + "px";
+    editor.style.top = top + "px";
+
+    cancelButton.addEventListener("click", closeScriptEditor);
+    saveButton.addEventListener("click", () => {
+        const nextName = titleInput.value;
+        const nextText = contentInput.value;
+        const changed = note.name !== nextName || note.text !== nextText;
+        if (changed) {
+            note.name = nextName;
+            note.text = nextText;
+            const titleDisplay = card.querySelector(".script-title-display");
+            const contentDisplay = card.querySelector(".script-content-preview");
+            if (titleDisplay) {
+                titleDisplay.textContent = note.name || "";
+                titleDisplay.title = note.name || "劇本文字標題";
+            }
+            if (contentDisplay) contentDisplay.textContent = note.text || "";
+            recordHistoryAfterRender();
+            saveEditorStateToStorage();
+        }
+        closeScriptEditor();
+    });
+
+    document.addEventListener("keydown", handleScriptEditorKeydown);
+    titleInput.focus();
+}
+
+function updateScriptOrderLabels(cards) {
+    cards.forEach((card, index) => {
+        const order = card.querySelector(".script-order");
+        if (order) order.textContent = "#" + (index + 1);
+    });
+}
+
+function suspendScriptList() {
+    const list = document.getElementById("scriptList");
+    if (!list) return;
+    ++scriptListRenderToken;
+    if (scriptListIdleHandle !== null) {
+        if (typeof cancelIdleCallback === "function") cancelIdleCallback(scriptListIdleHandle);
+        else clearTimeout(scriptListIdleHandle);
+        scriptListIdleHandle = null;
+    }
+    if (list._scriptClickHandler) list.removeEventListener("click", list._scriptClickHandler);
+    if (list._scriptPointerDownHandler) list.removeEventListener("pointerdown", list._scriptPointerDownHandler);
+    if (list._scriptPointerMoveHandler) list.removeEventListener("pointermove", list._scriptPointerMoveHandler);
+    if (list._scriptPointerUpHandler) list.removeEventListener("pointerup", list._scriptPointerUpHandler);
+    if (list._scriptPointerCancelHandler) list.removeEventListener("pointercancel", list._scriptPointerCancelHandler);
+    list.innerHTML = "";
+    scriptListRenderIndex = 0;
+    scriptListRendered = false;
+}
+
 function renderScriptList() {
     const list = document.getElementById("scriptList");
     if (!list) return;
-    list.innerHTML = "";
+    closeScriptEditor();
 
+    const renderToken = ++scriptListRenderToken;
+    scriptListRenderIndex = 0;
+    if (scriptListIdleHandle !== null) {
+        if (typeof cancelIdleCallback === "function") cancelIdleCallback(scriptListIdleHandle);
+        else clearTimeout(scriptListIdleHandle);
+        scriptListIdleHandle = null;
+    }
+
+    if (list._scriptClickHandler) list.removeEventListener("click", list._scriptClickHandler);
+    if (list._scriptPointerDownHandler) list.removeEventListener("pointerdown", list._scriptPointerDownHandler);
+    if (list._scriptPointerMoveHandler) list.removeEventListener("pointermove", list._scriptPointerMoveHandler);
+    if (list._scriptPointerUpHandler) list.removeEventListener("pointerup", list._scriptPointerUpHandler);
+    if (list._scriptPointerCancelHandler) list.removeEventListener("pointercancel", list._scriptPointerCancelHandler);
+
+    list.innerHTML = "";
+    const fragment = document.createDocumentFragment();
     scriptNotes.sort((a,b) => (Number(a.order) || 0) - (Number(b.order) || 0));
 
     const commitScriptOrder = () => {
         scriptNotes.forEach((note, index) => note.order = index);
     };
 
-    scriptNotes.forEach((note, index) => {
+    if (!scriptNotes.length) {
+        list.innerHTML = '<div class="empty-list">目前沒有劇本文字，按「＋ 新增文字」建立。</div>';
+        scriptListRendered = true;
+        return;
+    }
+
+    // 建立單張卡片；切換到「劇本文字」時只先建立首批，剩餘卡片分幀建立，避免主執行緒一次被 1000+ 筆 DOM 建立工作卡住。
+    function createScriptCard(note, index) {
         const card = document.createElement("div");
         card.className = "script-card";
         card.dataset.noteId = note.id;
+        card.title = "點選編輯劇本文字";
 
         const dragHandle = document.createElement("span");
         dragHandle.className = "script-drag-handle";
         dragHandle.setAttribute("role", "button");
         dragHandle.setAttribute("aria-label", "拖曳調整劇本文字順序");
         dragHandle.title = "按住六點上下拖曳排序";
-        for (let dot = 0; dot < 6; dot++) {
-            dragHandle.appendChild(document.createElement("span"));
-        }
+        for (let dot = 0; dot < 6; dot++) dragHandle.appendChild(document.createElement("span"));
 
         const head = document.createElement("div");
         head.className = "script-card-head";
@@ -5105,180 +5285,247 @@ function renderScriptList() {
         order.className = "script-order";
         order.textContent = "#" + (index + 1);
 
-        const title = document.createElement("input");
-        title.className = "script-title";
-        title.type = "text";
-        title.placeholder = "劇本文字標題";
-        title.value = note.name || "";
-        title.addEventListener("input", () => {
-            note.name = title.value;
-            recordHistoryAfterRender();
-            saveEditorStateToStorage();
-        });
+        const title = document.createElement("div");
+        title.className = "script-title-display";
+        title.textContent = note.name || "";
+        title.title = note.name || "劇本文字標題";
 
         const del = document.createElement("button");
         del.type = "button";
         del.className = "script-delete danger";
         del.textContent = "×";
         del.title = "刪除這筆劇本文字";
-        del.addEventListener("click", () => {
-            if (!confirm("確定刪除這筆劇本文字嗎？")) return;
+
+        head.append(order, title, del);
+
+        const content = document.createElement("div");
+        content.className = "script-content-preview";
+        content.textContent = note.text || "";
+        content.title = "點選編輯劇本文字";
+
+        card.append(dragHandle, head, content);
+        return card;
+    }
+
+    // 第一批立即顯示，讓切換頁面的畫面先恢復；之後分幀補齊，資料本身仍一次完整保留在 scriptNotes。
+    const FIRST_BATCH = 40;
+    const CHUNK_SIZE = 80;
+
+    function appendChunk(limit, forceInitial) {
+        if (renderToken !== scriptListRenderToken) return;
+        if (!forceInitial && window.__activeEditorNav !== "script") return;
+        const end = Math.min(scriptNotes.length, scriptListRenderIndex + limit);
+        fragment.textContent = "";
+        for (; scriptListRenderIndex < end; scriptListRenderIndex++) {
+            fragment.appendChild(createScriptCard(scriptNotes[scriptListRenderIndex], scriptListRenderIndex));
+        }
+        list.appendChild(fragment);
+        if (scriptListRenderIndex < scriptNotes.length) scheduleIdleScriptChunk(renderToken);
+        else scriptListIdleHandle = null;
+    }
+
+    function scheduleIdleScriptChunk(token) {
+        if (token !== scriptListRenderToken || window.__activeEditorNav !== "script") return;
+        if (scriptListIdleHandle !== null) return;
+        const run = () => {
+            scriptListIdleHandle = null;
+            if (token !== scriptListRenderToken || window.__activeEditorNav !== "script") return;
+            appendChunk(CHUNK_SIZE);
+        };
+        if (typeof requestIdleCallback === "function") scriptListIdleHandle = requestIdleCallback(run, {timeout:120});
+        else scriptListIdleHandle = setTimeout(run, 80);
+    }
+
+    // 只立即建立首批可見內容；其餘資料等瀏覽器空閒時再補，不阻塞其他分頁。
+    window.__scriptAppendIdleChunk = scheduleIdleScriptChunk;
+    window.__scriptCreateCard = createScriptCard;
+    appendChunk(FIRST_BATCH, true);
+    scriptListRendered = true;
+
+    // 使用事件委派：1000+ 筆文字只保留少量事件監聽器，不為每張卡片建立多組 listener。
+    list._scriptClickHandler = function(e) {
+        const del = e.target.closest(".script-delete");
+        if (del && list.contains(del)) {
+            e.stopPropagation();
+            const card = del.closest(".script-card");
+            const note = card ? scriptNotes.find(item => item.id === card.dataset.noteId) : null;
+            if (!note || !confirm("確定刪除這筆劇本文字嗎？")) return;
             const i = scriptNotes.indexOf(note);
             if (i >= 0) scriptNotes.splice(i, 1);
             commitScriptOrder();
             renderScriptList();
             recordHistoryAfterRender();
             saveEditorStateToStorage();
-        });
-
-        head.append(order, title, del);
-
-        const content = document.createElement("textarea");
-        content.className = "script-content";
-        content.placeholder = "輸入劇本文字內容……";
-        content.value = note.text || "";
-        content.addEventListener("input", () => {
-            note.text = content.value;
-            recordHistoryAfterRender();
-            saveEditorStateToStorage();
-        });
-
-        card.append(dragHandle, head, content);
-        list.appendChild(card);
-
-        // 六點拖曳排序：使用 requestAnimationFrame + 快取卡片，避免拖曳期間反覆查詢整個 DOM。
-        let dragging = false;
-        let pointerId = null;
-        let lastY = 0;
-        let rafId = null;
-        let autoScrollRaf = null;
-        let dropTarget = null;
-        let dropSide = null;
-
-        function clearDropIndicator() {
-            if (dropTarget) {
-                dropTarget.classList.remove("drop-before", "drop-after");
-                dropTarget = null;
-                dropSide = null;
-            }
+            return;
         }
+        const card = e.target.closest(".script-card");
+        if (!card || e.target.closest(".script-drag-handle")) return;
+        const note = scriptNotes.find(item => item.id === card.dataset.noteId);
+        if (note) openScriptEditor(note, card);
+    };
+    list.addEventListener("click", list._scriptClickHandler);
 
-        function clearDragState() {
-            if (rafId !== null) cancelAnimationFrame(rafId);
-            if (autoScrollRaf !== null) cancelAnimationFrame(autoScrollRaf);
-            rafId = null;
-            autoScrollRaf = null;
-            clearDropIndicator();
-            dragging = false;
-            pointerId = null;
-            card.classList.remove("dragging");
+    let dragging = false;
+    let pointerId = null;
+    let lastX = 0;
+    let lastY = 0;
+    let rafId = null;
+    let autoScrollRaf = null;
+    let dropTarget = null;
+    let dropSide = null;
+    let dragHandle = null;
+    let dragCard = null;
+
+    function clearDropIndicator() {
+        if (dropTarget) {
+            dropTarget.classList.remove("drop-before", "drop-after");
+            dropTarget = null;
+            dropSide = null;
         }
-
-        function getDropTarget(y) {
-            const cards = Array.from(list.children).filter(el => el.classList.contains("script-card") && el !== card);
-            if (!cards.length) return null;
-            let nearest = null;
-            let nearestDistance = Infinity;
-            for (const candidate of cards) {
-                const r = candidate.getBoundingClientRect();
-                if (y >= r.top && y <= r.bottom) return {card:candidate, side:y < r.top + r.height / 2 ? "before" : "after"};
-                const d = y < r.top ? r.top - y : y - r.bottom;
-                if (d < nearestDistance) { nearestDistance = d; nearest = candidate; }
-            }
-            if (!nearest) return null;
-            const r = nearest.getBoundingClientRect();
-            return {card:nearest, side:y < r.top + r.height / 2 ? "before" : "after"};
-        }
-
-        function updateDropIndicator() {
-            if (!dragging) return;
-            const rect = list.getBoundingClientRect();
-            const edge = 42;
-            if (lastY < rect.top + edge) list.scrollTop -= Math.max(3, Math.ceil((rect.top + edge - lastY) / 5));
-            else if (lastY > rect.bottom - edge) list.scrollTop += Math.max(3, Math.ceil((lastY - (rect.bottom - edge)) / 5));
-
-            const hit = getDropTarget(lastY);
-            const nextTarget = hit?.card || null;
-            const nextSide = hit?.side || null;
-            if (nextTarget === dropTarget && nextSide === dropSide) return;
-            clearDropIndicator();
-            if (nextTarget) {
-                dropTarget = nextTarget;
-                dropSide = nextSide;
-                dropTarget.classList.add(nextSide === "before" ? "drop-before" : "drop-after");
-            }
-        }
-
-        function scheduleDragUpdate() {
-            if (rafId === null) rafId = requestAnimationFrame(() => { rafId = null; updateDropIndicator(); });
-        }
-
-        function autoScrollLoop() {
-            if (!dragging) return;
-            updateDropIndicator();
-            autoScrollRaf = requestAnimationFrame(autoScrollLoop);
-        }
-
-        dragHandle.addEventListener("pointerdown", function(e) {
-            if (e.button !== undefined && e.button !== 0) return;
-            e.preventDefault();
-            e.stopPropagation();
-            dragging = true;
-            pointerId = e.pointerId;
-            lastY = e.clientY;
-            card.classList.add("dragging");
-            try { dragHandle.setPointerCapture(e.pointerId); } catch (_) {}
-            autoScrollRaf = requestAnimationFrame(autoScrollLoop);
-            scheduleDragUpdate();
-        });
-
-        dragHandle.addEventListener("pointermove", function(e) {
-            if (!dragging || pointerId !== e.pointerId) return;
-            e.preventDefault();
-            lastY = e.clientY;
-            scheduleDragUpdate();
-        });
-
-        function finishDrag(e) {
-            if (!dragging || pointerId !== e.pointerId) return;
-            lastY = e.clientY;
-            updateDropIndicator();
-            const target = dropTarget;
-            const side = dropSide;
-            if (target && target !== card) {
-                const fromIndex = scriptNotes.findIndex(item => item.id === note.id);
-                const targetId = target.dataset.noteId;
-                const targetIndex = scriptNotes.findIndex(item => item.id === targetId);
-                if (fromIndex !== -1 && targetIndex !== -1) {
-                    const [movedNote] = scriptNotes.splice(fromIndex, 1);
-                    let insertIndex = scriptNotes.findIndex(item => item.id === targetId);
-                    if (side === "after") insertIndex += 1;
-                    scriptNotes.splice(insertIndex, 0, movedNote);
-                    commitScriptOrder();
-                }
-            }
-            clearDragState();
-            renderScriptList();
-            recordHistoryAfterRender();
-            saveEditorStateToStorage();
-        }
-
-        dragHandle.addEventListener("pointerup", finishDrag);
-        dragHandle.addEventListener("pointercancel", clearDragState);
-        dragHandle.addEventListener("lostpointercapture", function() {
-            if (dragging) clearDragState();
-        });
-    });
-
-    if (!scriptNotes.length) {
-        list.innerHTML = '<div class="empty-list">目前沒有劇本文字，按「＋ 新增文字」建立。</div>';
     }
+
+    function clearDragState() {
+        if (rafId !== null) cancelAnimationFrame(rafId);
+        if (autoScrollRaf !== null) cancelAnimationFrame(autoScrollRaf);
+        rafId = null;
+        autoScrollRaf = null;
+        clearDropIndicator();
+        dragging = false;
+        pointerId = null;
+        dragHandle = null;
+        if (dragCard) dragCard.classList.remove("dragging");
+        dragCard = null;
+    }
+
+    // 直接沿用場景排序的命中方式：以指標所在 DOM 元素決定藍線位置，不做整份列表座標掃描。
+    function getDropTarget(x, y) {
+        let target = document.elementFromPoint(x, y)?.closest(".script-card");
+        if (target && list.contains(target) && target !== dragCard) {
+            const rect = target.getBoundingClientRect();
+            return {card:target, side:y < rect.top + rect.height / 2 ? "before" : "after"};
+        }
+
+        const rect = list.getBoundingClientRect();
+        const first = list.querySelector(".script-card");
+        const last = list.lastElementChild;
+        if (!first || !last || !first.classList.contains("script-card") || !last.classList.contains("script-card")) return null;
+        if (y < rect.top) return {card:first, side:"before"};
+        if (y > rect.bottom) return {card:last, side:"after"};
+        return null;
+    }
+
+    function updateDropIndicator() {
+        if (!dragging) return;
+        const rect = list.getBoundingClientRect();
+        const edge = 42;
+        if (lastY < rect.top + edge) list.scrollTop -= Math.max(3, Math.ceil((rect.top + edge - lastY) / 5));
+        else if (lastY > rect.bottom - edge) list.scrollTop += Math.max(3, Math.ceil((lastY - (rect.bottom - edge)) / 5));
+
+        const hit = getDropTarget(lastX, lastY);
+        const nextTarget = hit?.card || null;
+        const nextSide = hit?.side || null;
+        if (nextTarget === dropTarget && nextSide === dropSide) return;
+        clearDropIndicator();
+        if (nextTarget) {
+            dropTarget = nextTarget;
+            dropSide = nextSide;
+            dropTarget.classList.add(nextSide === "before" ? "drop-before" : "drop-after");
+        }
+    }
+
+    function scheduleDragUpdate() {
+        if (rafId === null) rafId = requestAnimationFrame(() => { rafId = null; updateDropIndicator(); });
+    }
+
+    function autoScrollLoop() {
+        if (!dragging) return;
+        updateDropIndicator();
+        autoScrollRaf = requestAnimationFrame(autoScrollLoop);
+    }
+
+    list._scriptPointerDownHandler = function(e) {
+        const handle = e.target.closest(".script-drag-handle");
+        if (!handle || !list.contains(handle)) return;
+        if (e.button !== undefined && e.button !== 0) return;
+        const card = handle.closest(".script-card");
+        if (!card) return;
+        const note = scriptNotes.find(item => item.id === card.dataset.noteId);
+        if (!note) return;
+
+        e.preventDefault();
+        e.stopPropagation();
+        dragging = true;
+        pointerId = e.pointerId;
+        lastX = e.clientX;
+        lastY = e.clientY;
+        dragHandle = handle;
+        dragCard = card;
+        card.classList.add("dragging");
+        try { handle.setPointerCapture(e.pointerId); } catch (_) {}
+        autoScrollRaf = requestAnimationFrame(autoScrollLoop);
+        scheduleDragUpdate();
+    };
+
+    list._scriptPointerMoveHandler = function(e) {
+        if (!dragging || pointerId !== e.pointerId) return;
+        e.preventDefault();
+        lastX = e.clientX;
+        lastY = e.clientY;
+        scheduleDragUpdate();
+    };
+
+    function finishDrag(e) {
+        if (!dragging || pointerId !== e.pointerId) return;
+        lastX = e.clientX;
+        lastY = e.clientY;
+        updateDropIndicator();
+        const target = dropTarget;
+        const side = dropSide;
+        if (target && target !== dragCard) {
+            const cards = Array.from(list.children).filter(el => el.classList.contains("script-card"));
+            const note = scriptNotes.find(item => item.id === dragCard.dataset.noteId);
+            const fromIndex = note ? scriptNotes.indexOf(note) : -1;
+            const targetId = target.dataset.noteId;
+            const targetIndex = scriptNotes.findIndex(item => item.id === targetId);
+            if (fromIndex !== -1 && targetIndex !== -1) {
+                const [movedNote] = scriptNotes.splice(fromIndex, 1);
+                let insertIndex = scriptNotes.findIndex(item => item.id === targetId);
+                if (side === "after") insertIndex += 1;
+                scriptNotes.splice(insertIndex, 0, movedNote);
+                commitScriptOrder();
+
+                if (side === "before") list.insertBefore(dragCard, target);
+                else list.insertBefore(dragCard, target.nextSibling);
+                // DOM 移動完成後重新取得目前實際順序，讓畫面上的序號與排序同步。
+                updateScriptOrderLabels(Array.from(list.children).filter(el => el.classList.contains("script-card")));
+            }
+        }
+        clearDragState();
+        recordHistoryAfterRender();
+        saveEditorStateToStorage();
+    }
+
+    list._scriptPointerUpHandler = finishDrag;
+    list._scriptPointerCancelHandler = function(e) {
+        if (dragging && pointerId === e.pointerId) clearDragState();
+    };
+    list.addEventListener("pointerdown", list._scriptPointerDownHandler);
+    list.addEventListener("pointermove", list._scriptPointerMoveHandler);
+    list.addEventListener("pointerup", list._scriptPointerUpHandler);
+    list.addEventListener("pointercancel", list._scriptPointerCancelHandler);
 }
 function addScriptNote() {
     const maxOrder=scriptNotes.reduce((m,n)=>Math.max(m,Number(n.order)||0),-1);
-    scriptNotes.push({id:createId(),name:"",text:"",iconUrl:"",order:maxOrder+1});
+    const note={id:createId(),name:"",text:"",iconUrl:"",order:maxOrder+1};
+    scriptNotes.push(note);
     renderScriptList();
-    const inputs=document.querySelectorAll("#scriptList .script-title"); if(inputs.length)inputs[inputs.length-1].focus();
+    let card=document.querySelector('#scriptList .script-card[data-note-id="'+note.id+'"]');
+    if(!card && typeof window.__scriptCreateCard==="function"){
+        card=window.__scriptCreateCard(note, scriptNotes.length-1);
+        document.getElementById("scriptList")?.appendChild(card);
+        scriptListRenderIndex=Math.max(scriptListRenderIndex, scriptNotes.length);
+    }
+    if(card) openScriptEditor(note, card);
     recordHistoryAfterRender(); saveEditorStateToStorage();
 }
 document.getElementById("addScriptNote")?.addEventListener("click",addScriptNote);
@@ -7213,9 +7460,20 @@ document.getElementById("importZIP").addEventListener("click", () => {
     window.setEditorNav=function(name){
         buttons.forEach(b=>b.classList.toggle("active",b.dataset.nav===name));
         Object.entries(panels).forEach(([key,p])=>{if(p)p.classList.toggle("hidden",key!==name);});
-        if(name==="script")renderScriptList();
+        if(name!=="script" && typeof closeScriptEditor==="function") closeScriptEditor();
+        window.__activeEditorNav = name;
+        if(name!=="script"){
+            suspendScriptList();
+        } else {
+            renderScriptList();
+        }
         if(name==="settings"){const sc=getCurrentScene(); if(sc){sceneWidthInput.value=sc.sceneWidth??1920;sceneHeightInput.value=sc.sceneHeight??1080;alignWithGridInput.checked=sc.alignWithGrid!==false;showGridInput.checked=sc.showGrid!==false;sceneColorOpacityInput.value=Math.round((sc.sceneTintOpacity??.08)*100);sceneColorOpacityValue.textContent=Math.round((sc.sceneTintOpacity??.08)*100)+"%";} renderSceneColorPresets();}
-        requestAnimationFrame(()=>{if(typeof updateViewport==="function")updateViewport();if(typeof fitCanvas==="function")fitCanvas();});
+        requestAnimationFrame(()=>{
+            if(name!=="script"){
+                if(typeof updateViewport==="function")updateViewport();
+                if(typeof fitCanvas==="function")fitCanvas();
+            }
+        });
     };
     buttons.forEach(b=>b.addEventListener("click",()=>setEditorNav(b.dataset.nav)));
 })();
@@ -7227,7 +7485,7 @@ document.getElementById("importZIP").addEventListener("click", () => {
     if (!sidebar || !toggle) return;
     toggle.addEventListener("click", () => {
         const collapsed = sidebar.classList.toggle("collapsed");
-        toggle.textContent = collapsed ? " › " : " ‹ ";
+        toggle.textContent = collapsed ? "›" : "‹";
         toggle.title = collapsed ? "展開側邊欄" : "收起側邊欄";
         toggle.setAttribute("aria-label", toggle.title);
         toggle.setAttribute("aria-expanded", String(!collapsed));
@@ -7471,6 +7729,7 @@ const foregroundHeight = source.fieldHeight;
         updateForegroundStyle();
     }
     render();
+    renderScriptList();
     resetHistoryBaseline();
 
     /*
@@ -7484,6 +7743,9 @@ const foregroundHeight = source.fieldHeight;
     const deferLargeZipAutosave = importedZipBytes >= 20 * 1024 * 1024;
     if (!deferLargeZipAutosave) {
         await saveEditorStateToStorage();
+    } else {
+        /* 大型 ZIP 先讓瀏覽器完成匯入，再補存最新狀態；避免重新開啟時回到匯入前資料。 */
+        setTimeout(() => { void saveEditorStateToStorage(); }, 2000);
     }
     const status = document.getElementById("zipStatus");
     const importSummary = "ZIP 匯入完成：" + importedScenes.length + " 個場景、" + importedShared.length + " 個畫面元件、" + scriptNotes.length + " 筆劇本文字";
