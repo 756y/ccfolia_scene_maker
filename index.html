@@ -88,15 +88,34 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 #sidebar::-webkit-scrollbar{width:7px}
 #sidebar::-webkit-scrollbar-thumb{background:#435269;border-radius:10px}
 #sidebar::-webkit-scrollbar-track{background:transparent}
-#sidebar{transition:width .2s ease,flex-basis .2s ease}
-#sidebar.collapsed{width:58px;flex-basis:58px;padding:10px 7px;overflow:hidden}
-#sidebar.collapsed > *{display:none!important}
+#sidebar{
+    transition:width .2s ease,flex-basis .2s ease;
+}
 
+#sidebar.collapsed{
+    width:0;
+    flex-basis:0;
+    padding:0;
+    border-right:0;
+    overflow:hidden;
+}
 
-#sidebar.collapsed .app-logo{width:38px;height:38px}
-#sidebarToggle{margin-left:auto;flex:0 0 auto;white-space:nowrap;padding:7px 10px;height:38px;background:#202c3c;border:1px solid #3a4b62;border-radius:8px;color:var(--text);cursor:pointer}
-#sidebar.collapsed{width:58px;flex-basis:58px;padding:10px 7px;overflow:hidden}
-#sidebar.collapsed #sidebarToggle{width:40px;padding:7px 0}
+#sidebar.collapsed > *{
+    display:none!important;
+}
+
+#sidebarToggle{
+    margin-left:auto;
+    flex:0 0 auto;
+    white-space:nowrap;
+    padding:7px 10px;
+    height:38px;
+    background:#202c3c;
+    border:1px solid #3a4b62;
+    border-radius:8px;
+    color:var(--text);
+    cursor:pointer;
+}
 
 .sidebar-header{
     display:flex;
@@ -484,7 +503,7 @@ button.full{width:100%}
     <button class="top-nav-button" data-nav="script" type="button">劇本文字</button>
     <button class="top-nav-button" data-nav="settings" type="button">設定</button>
     <button class="top-nav-button" data-nav="other" type="button">其他</button>
-    <button id="sidebarToggle" type="button" title="收起側邊欄" aria-label="收起側邊欄" aria-expanded="true">‹ 收起</button>
+    <button id="sidebarToggle" type="button" title="收起側邊欄" aria-label="收起側邊欄" aria-expanded="true"> ‹ </button>
 </nav>
 
 <div id="appMain">
@@ -510,7 +529,7 @@ button.full{width:100%}
     <input type="file" id="backgroundImageInput" accept="image/*" style="display:none;">
     <input type="file" id="foregroundImageInput" accept="image/*" style="display:none;">
     <input type="file" id="replaceImageInput" accept="image/*" style="display:none;">
-    <input type="file" id="importVIPInput" accept=".zip,application/zip,application/x-zip-compressed" style="display:none;">
+    <input type="file" id="importZIPInput" accept=".zip,application/zip,application/x-zip-compressed" style="display:none;">
 
     <section class="panel-section">
         <div class="section-title"><span><span class="section-icon">▦</span>元件列表</span><small>可直接點選</small></div>
@@ -556,8 +575,8 @@ button.full{width:100%}
 </section>
 
 <section id="scriptPanel" class="nav-panel hidden">
-    <div class="sidebar-header"><div class="sidebar-title"><strong>劇本文字</strong><span>匯入／匯出 VIP ZIP 的 entities.notes</span></div></div>
-    <div class="panel-intro">每一筆劇本文字都對應 VIP ZIP 的一個 note。<b>標題</b>會寫入 <code>name</code>，<b>內容</b>會寫入 <code>text</code>，原本的其他欄位也會保留。</div>
+    <div class="sidebar-header"><div class="sidebar-title"><strong>劇本文字</strong><span>匯入／匯出 ZIP 的 entities.notes</span></div></div>
+    <div class="panel-intro">每一筆劇本文字都對應 ZIP 的一個 note。<b>標題</b>會寫入 <code>name</code>，<b>內容</b>會寫入 <code>text</code>，原本的其他欄位也會保留。</div>
     <div class="script-toolbar"><button id="addScriptNote" class="primary" type="button">＋ 新增文字</button><button id="scriptSortButton" type="button">↕ 依原順序</button></div>
     <div id="scriptList" class="script-list"></div>
 </section>
@@ -567,7 +586,7 @@ button.full{width:100%}
     <div class="settings-content">
         <h3>場景顯示範圍（僅編輯器輔助）</h3>
         <div class="two-col"><div class="control"><label for="sceneWidthInput">場景寬度</label><input id="sceneWidthInput" type="number" min="1" step="1" value="1920"></div><div class="control"><label for="sceneHeightInput">場景高度</label><input id="sceneHeightInput" type="number" min="1" step="1" value="1080"></div></div>
-        <p style="font-size:10px;color:var(--muted);margin:7px 0 15px">這兩個數值只用來在編輯器中表示「希望顯示的場景範圍」，不會寫入 VIP ZIP 的 Scene。</p>
+        <p style="font-size:10px;color:var(--muted);margin:7px 0 15px">這兩個數值只用來在編輯器中表示「希望顯示的場景範圍」，不會寫入 ZIP 的 Scene。</p>
         <h3>場景範圍顏色</h3>
         <div id="sceneColorGrid" class="scene-color-grid"></div>
         <div class="control" style="margin-top:12px"><label class="field-title"><span>透明度</span><span id="sceneColorOpacityValue" class="scene-range-value">8%</span></label><input id="sceneColorOpacityInput" type="range" min="0" max="30" step="1" value="8"></div>
@@ -583,7 +602,7 @@ button.full{width:100%}
 <section id="otherPanel" class="nav-panel hidden">
     <div class="sidebar-header"><div class="sidebar-title"><strong>其他</strong><span>檔案與編輯器管理</span></div></div>
     <section class="panel-section"><div class="section-title"><span>⇩ 匯入／匯出</span></div><div class="section-body"><div class="other-actions">
-        <button id="importVIP" class="export-button">⇧ 匯入壓縮檔</button><button id="exportZIP" class="export-button primary">⇩ 匯出壓縮檔</button><button id="exportPNG" class="export-button">▧ 匯出 PNG</button>
+        <button id="importZIP" class="export-button">⇧ 匯入壓縮檔</button><button id="exportZIP" class="export-button primary">⇩ 匯出壓縮檔</button><button id="exportPNG" class="export-button">▧ 匯出 PNG</button>
     </div><div id="zipStatus">尚未輸出 Room ZIP</div></div></section>
     <section class="panel-section"><div class="section-title"><span>↻ 初始化</span></div><div class="section-body"><button id="initializeEditor" class="danger full">初始化編輯器</button></div></section>
 </section>
@@ -779,8 +798,8 @@ const scenes = [];
  */
 const sharedObjects = [];
 let scriptNotes = [];
-let vipPreservedData = null;
-let vipOriginalZipEntries = new Map();
+let zipPreservedData = null;
+let zipOriginalZipEntries = new Map();
 
 let currentSceneId = null;
 
@@ -840,7 +859,7 @@ function cloneEditorState() {
         sharedObjects: sharedObjects.map(cloneObjectForHistory),
         scriptNotes: scriptNotes.map(note => ({...note})),
         currentSceneId,
-        vipPreservedData: vipPreservedData ? structuredClone(vipPreservedData) : null
+        zipPreservedData: zipPreservedData ? structuredClone(zipPreservedData) : null
     };
 }
 
@@ -924,7 +943,7 @@ function cloneEditorStateFromSnapshot(state) {
         scenes: (state.scenes || []).map(scene => ({...scene,objects:Array.isArray(scene.objects)?scene.objects.map(cloneObjectForHistory):[]})),
         sharedObjects: (state.sharedObjects || []).map(cloneObjectForHistory),
         scriptNotes: (state.scriptNotes || []).map(note => ({...note})),
-        vipPreservedData: state.vipPreservedData ? structuredClone(state.vipPreservedData) : null,
+        zipPreservedData: state.zipPreservedData ? structuredClone(state.zipPreservedData) : null,
         currentSceneId: state.currentSceneId || null
     };
 }
@@ -935,7 +954,7 @@ function restoreEditorState(state) {
     scenes.splice(0, scenes.length, ...restored.scenes);
     sharedObjects.splice(0, sharedObjects.length, ...restored.sharedObjects);
     scriptNotes.splice(0, scriptNotes.length, ...(restored.scriptNotes || []));
-    vipPreservedData = restored.vipPreservedData || null;
+    zipPreservedData = restored.zipPreservedData || null;
     currentSceneId = restored.currentSceneId;
     selectedId = null;
     selectedIds.clear();
@@ -970,7 +989,7 @@ function redoLastAction() {
 }
 
 function buildPersistedState() {
-    return {version:2,savedAt:Date.now(),scenes:scenes,sharedObjects:sharedObjects,scriptNotes:scriptNotes,currentSceneId,vipPreservedData};
+    return {version:2,savedAt:Date.now(),scenes:scenes,sharedObjects:sharedObjects,scriptNotes:scriptNotes,currentSceneId,zipPreservedData};
 }
 
 function applyPersistedState(saved) {
@@ -978,7 +997,7 @@ function applyPersistedState(saved) {
     scenes.splice(0, scenes.length, ...saved.scenes);
     sharedObjects.splice(0, sharedObjects.length, ...saved.sharedObjects);
     scriptNotes.splice(0, scriptNotes.length, ...(Array.isArray(saved.scriptNotes) ? saved.scriptNotes : []));
-    vipPreservedData = saved.vipPreservedData || null;
+    zipPreservedData = saved.zipPreservedData || null;
     currentSceneId = saved.currentSceneId;
     if (!scenes.length) { const firstScene=createScene("場景 1"); scenes.push(firstScene); currentSceneId=firstScene.id; }
     if (!scenes.some(scene=>scene.id===currentSceneId)) currentSceneId=scenes[0].id;
@@ -6708,10 +6727,10 @@ async function buildSceneRoom() {
     // 匯出開始時固定目前畫面上的場景順序，避免 ZIP 建立期間順序來源不一致。
     const exportScenes = scenes.slice();
 
-    const resources = vipPreservedData?.resources ? structuredClone(vipPreservedData.resources) : {};
+    const resources = zipPreservedData?.resources ? structuredClone(zipPreservedData.resources) : {};
 
     const imageFiles = new Map();
-    for (const [name, bytes] of vipOriginalZipEntries.entries()) {
+    for (const [name, bytes] of zipOriginalZipEntries.entries()) {
         if (name !== "__data.json" && name !== ".token" && !imageFiles.has(name)) imageFiles.set(name, {name, data:bytes});
     }
 
@@ -6772,9 +6791,9 @@ async function getSceneImageFilename(dataURL, sourceName) {
      */
 
     const room = {
-        ...(vipPreservedData?.entities?.room ? structuredClone(vipPreservedData.entities.room) : {}),
-        backgroundUrl: vipPreservedData?.entities?.room?.backgroundUrl ?? null,
-        foregroundUrl: vipPreservedData?.entities?.room?.foregroundUrl ?? null,
+        ...(zipPreservedData?.entities?.room ? structuredClone(zipPreservedData.entities.room) : {}),
+        backgroundUrl: zipPreservedData?.entities?.room?.backgroundUrl ?? null,
+        foregroundUrl: zipPreservedData?.entities?.room?.foregroundUrl ?? null,
         sceneId: exportScenes.length > 0 ? exportScenes[0].id : null
     };
 
@@ -6810,7 +6829,7 @@ const y =
     const height =
         object.height / 24;
 
-    const sourceItem = vipPreservedData?.entities?.items?.[object.id] || {};
+    const sourceItem = zipPreservedData?.entities?.items?.[object.id] || {};
     itemEntities[object.id] = {
         ...structuredClone(sourceItem),
         x:
@@ -6880,7 +6899,7 @@ visible:
 
     for (const sceneData of exportScenes) {
 
-        const sourceScene = vipPreservedData?.entities?.scenes?.[sceneData.id] || {};
+        const sourceScene = zipPreservedData?.entities?.scenes?.[sceneData.id] || {};
         const scene = {
             ...structuredClone(sourceScene),
     name:
@@ -7043,7 +7062,7 @@ const y =
 
     else {
 
-        const sourceItem = vipPreservedData?.entities?.items?.[objectId] || {};
+        const sourceItem = zipPreservedData?.entities?.items?.[objectId] || {};
         itemEntities[objectId] = {
             ...structuredClone(sourceItem),
             x:
@@ -7137,16 +7156,16 @@ const y =
     const data = {
 
         meta: {
-            ...(vipPreservedData?.meta ? structuredClone(vipPreservedData.meta) : {}),
+            ...(zipPreservedData?.meta ? structuredClone(zipPreservedData.meta) : {}),
             version: "1.1.0"
         },
 
         entities: {
-            ...(vipPreservedData?.entities ? structuredClone(vipPreservedData.entities) : {}),
+            ...(zipPreservedData?.entities ? structuredClone(zipPreservedData.entities) : {}),
             room: room,
             items: itemEntities,
             notes: Object.fromEntries(scriptNotes.map((note,index)=>{
-                const sourceNote = vipPreservedData?.entities?.notes?.[note.id] || {};
+                const sourceNote = zipPreservedData?.entities?.notes?.[note.id] || {};
                 const {id: _noteId, ...noteData} = note;
                 return [note.id,{...structuredClone(sourceNote),...noteData,order:index}];
             })),
@@ -7184,8 +7203,8 @@ const y =
    支援 ZIP Store 與 Deflate，讀取 __data.json 及資源圖片。
    匯入採整份還原，會取代編輯器目前的場景與元件。
    ========================================================= */
-document.getElementById("importVIP").addEventListener("click", () => {
-    document.getElementById("importVIPInput").click();
+document.getElementById("importZIP").addEventListener("click", () => {
+    document.getElementById("importZIPInput").click();
 });
 
 (function setupTopNavigation(){
@@ -7208,7 +7227,7 @@ document.getElementById("importVIP").addEventListener("click", () => {
     if (!sidebar || !toggle) return;
     toggle.addEventListener("click", () => {
         const collapsed = sidebar.classList.toggle("collapsed");
-        toggle.textContent = collapsed ? "›" : "‹ 收起";
+        toggle.textContent = collapsed ? " › " : " ‹ ";
         toggle.title = collapsed ? "展開側邊欄" : "收起側邊欄";
         toggle.setAttribute("aria-label", toggle.title);
         toggle.setAttribute("aria-expanded", String(!collapsed));
@@ -7309,7 +7328,7 @@ function importRoomPosition(value, dimension) {
     return Number.isFinite(n) ? n * 24 + dimension / 2 : dimension / 2;
 }
 
-async function importVIPRoom(file) {
+async function importZIPRoom(file) {
     const entries = await readZipEntries(await file.arrayBuffer());
     const dataEntry = entries.get("__data.json") || entries.get("data.json");
     if (!dataEntry) throw new Error("找不到 __data.json，這可能不是 Cocofolia Room ZIP 檔案。");
@@ -7408,13 +7427,13 @@ async function importVIPRoom(file) {
                 flipX: false, flipY: false, visible: true, locked: marker.locked === true, type: "sceneMarker"
             });
         }
-        // VIP 的 fieldWidth / fieldHeight 是 Cocofolia 的場景輔助欄位，並非本工具的前景尺寸；不再匯入。
+        // ZIP 的 fieldWidth / fieldHeight 是 Cocofolia 的場景輔助欄位，並非本工具的前景尺寸；不再匯入。
         const foregroundWidth = source.fieldWidth;
 const foregroundHeight = source.fieldHeight;
         importedScenes.push({
             id: source.id, name: source.name || ("場景 " + (importedScenes.length + 1)),
             text: source.text || "",
-            _vipSourceId: source.id,
+            _zipSourceId: source.id,
             sceneWidth, sceneHeight, showGrid: source.displayGrid !== false,
             backgroundData, foregroundData,
             backgroundSourceName: backgroundImage ? backgroundImage.sourceName : null,
@@ -7428,8 +7447,8 @@ const foregroundHeight = source.fieldHeight;
         });
     }
     // 完成所有解析後才替換編輯器資料；同時保留原始 entities/meta/resources，避免「匯入→匯出」遺失未知欄位。
-    vipPreservedData = structuredClone(roomData);
-    vipOriginalZipEntries = new Map(entries);
+    zipPreservedData = structuredClone(roomData);
+    zipOriginalZipEntries = new Map(entries);
     const importedNotes = Object.entries(entities.notes || {}).map(([id,note]) => ({...structuredClone(note),id}));
     importedNotes.sort((a,b)=>(Number(a.order)||0)-(Number(b.order)||0));
     scriptNotes.splice(0, scriptNotes.length, ...importedNotes);
@@ -7482,14 +7501,14 @@ const foregroundHeight = source.fieldHeight;
     }
 }
 
-document.getElementById("importVIPInput").addEventListener("change", async function() {
+document.getElementById("importZIPInput").addEventListener("change", async function() {
     const file = this.files && this.files[0];
     if (!file) return;
     const status = document.getElementById("zipStatus");
     try {
         status.style.color = "var(--success)";
         status.textContent = "正在讀取 ZIP 房間資料…";
-        await importVIPRoom(file);
+        await importZIPRoom(file);
         status.style.color = "var(--success)";
     } catch (error) {
         console.error("ZIP 匯入失敗：", error);
@@ -7998,8 +8017,8 @@ async function initializeEditorToBlank() {
     scenes.splice(0, scenes.length);
     sharedObjects.splice(0, sharedObjects.length);
     scriptNotes.splice(0, scriptNotes.length);
-    vipPreservedData = null;
-    vipOriginalZipEntries = new Map();
+    zipPreservedData = null;
+    zipOriginalZipEntries = new Map();
 
     const firstScene = createScene("場景 1");
     scenes.push(firstScene);
